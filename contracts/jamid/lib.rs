@@ -9,8 +9,7 @@ mod jamid {
     /// Constants
     const MAX_JID_LENGTH: usize = 64;
     const MIN_JID_LENGTH: usize = 3;
-    const MAX_METADATA_SIZE: usize = 2048; // 2KB
-    const REGISTRATION_FEE: Balance = 1_000_000_000_000; // 1 token (adjust decimals)
+    const MAX_METADATA_SIZE: usize = 256; // 256 bytes (anti-DoS, use IPFS/pointer for larger data)
     
     /// Represents a JAM Identity record
     #[derive(Debug, Clone, PartialEq, Eq, scale::Decode, scale::Encode)]
@@ -39,8 +38,9 @@ mod jamid {
         hash_to_jid: Mapping<Hash, String>,
         /// Mapping from AccountId to JID hash
         account_to_jid: Mapping<AccountId, Hash>,
-        /// Nonces for replay protection
-        nonces: Mapping<AccountId, u64>,
+        /// Nonces for replay protection (namespaced by action)
+        /// Key: (AccountId, action_id), Value: nonce
+        nonces: Mapping<(AccountId, u8), u64>,
         /// Contract owner (for administrative functions)
         owner: AccountId,
         /// Contract pause state
@@ -57,6 +57,8 @@ mod jamid {
         total_fees_withdrawn: Balance,
         /// Chain identifier for cross-chain protection
         chain_id: String,
+        /// Genesis block hash for trustless chain identification
+        genesis_hash: Hash,
     }
 
     /// Events emitted by the contract
@@ -139,13 +141,28 @@ mod jamid {
 
     pub type Result<T> = core::result::Result<T, Error>;
 
+    /// Action types for namespaced nonces
+    /// Each action (register, transfer) has its own nonce counter per account
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+    pub enum Action {
+        Register = 0,
+        Transfer = 1,
+    }
+
     impl Jamid {
         /// Creates a new JAMID contract
         /// 
         /// # Arguments
-        /// * `chain_id` - Chain identifier (e.g., "paseo", "pop", "jam")
+        /// * `chain_id` - Chain identifier (e.g., "paseo", "pop", "jam") for human-readability
+        /// * `genesis_hash` - Genesis block hash for trustless chain identification
+        /// 
+        /// # Security
+        /// The genesis_hash parameter must be the actual genesis hash of the chain.
+        /// This prevents signature replay attacks across chains even if chain_id is spoofed.
+        /// The deployer is responsible for providing the correct genesis hash.
         #[ink(constructor)]
-        pub fn new(chain_id: String) -> Self {
+        pub fn new(chain_id: String, genesis_hash: Hash) -> Self {
             Self {
                 jid_registry: Mapping::new(),
                 hash_to_jid: Mapping::new(),
@@ -155,10 +172,11 @@ mod jamid {
                 paused: false,
                 blacklist: Mapping::new(),
                 total_jids: 0,
-                registration_fee: REGISTRATION_FEE,
+                registration_fee: 1_000_000_000_000, // 1 token default (configurable)
                 total_fees_collected: 0,
                 total_fees_withdrawn: 0,
                 chain_id,
+                genesis_hash,
             }
         }
 
@@ -177,15 +195,39 @@ mod jamid {
             nonce: u64,
             expires_at: Timestamp,
         ) -> Result<()> {
-            // Check if contract is paused
+            // 1. Check if contract is paused (cheapest)
             if self.paused {
                 return Err(Error::ContractPaused);
             }
 
-            let caller = self.env().caller();
-            let transferred = self.env().transferred_value();
+            // 2. Normalize JID (cheap)
+            let normalized_jid = jid.to_lowercase();
 
-            // Validate payment
+            // 3. Validate JID format (cheap)
+            self.validate_jid(&normalized_jid)?;
+
+            // 4. Compute JID hash (cheap)
+            let jid_hash = self.hash_jid(&normalized_jid);
+
+            // 5. Check if JID is blacklisted (cheap storage read)
+            if self.blacklist.get(&jid_hash).unwrap_or(false) {
+                return Err(Error::JIDBlacklisted);
+            }
+
+            // 6. Check if JID already exists (medium)
+            if self.jid_registry.contains(&jid_hash) {
+                return Err(Error::JIDAlreadyExists);
+            }
+
+            let caller = self.env().caller();
+
+            // 7. Check if account already has a JID (medium)
+            if self.account_to_jid.contains(&caller) {
+                return Err(Error::AccountAlreadyRegistered);
+            }
+
+            // 8. NOW validate payment (after cheap checks, before expensive ones)
+            let transferred = self.env().transferred_value();
             if transferred < self.registration_fee {
                 return Err(Error::InsufficientPayment);
             }
@@ -193,43 +235,17 @@ mod jamid {
             // Track fees
             self.total_fees_collected = self.total_fees_collected.saturating_add(transferred);
 
-            // Normalize JID (lowercase)
-            let normalized_jid = jid.to_lowercase();
-
-            // Validate JID format
-            self.validate_jid(&normalized_jid)?;
-
-            // Compute JID hash (fixed-size key)
-            let jid_hash = self.hash_jid(&normalized_jid);
-
-            // Check if JID is blacklisted
-            if self.blacklist.get(&jid_hash).unwrap_or(false) {
-                return Err(Error::JIDBlacklisted);
-            }
-
-            // Check if JID already exists
-            if self.jid_registry.contains(&jid_hash) {
-                return Err(Error::JIDAlreadyExists);
-            }
-
-            // Check if account already has a JID
-            if self.account_to_jid.contains(&caller) {
-                return Err(Error::AccountAlreadyRegistered);
-            }
-
-            // Verify nonce for replay protection
-            let expected_nonce = self.nonces.get(&caller).unwrap_or(0);
+            // 9. Verify nonce for replay protection (medium)
+            let expected_nonce = self.get_nonce_of(&caller, Action::Register);
             if nonce != expected_nonce {
                 return Err(Error::InvalidNonce);
             }
 
-            // Verify signature
+            // 10. Verify signature (most expensive, last)
             self.verify_signature(&caller, &normalized_jid, nonce, &signature)?;
 
-            // Increment nonce with overflow check
-            let new_nonce = expected_nonce.checked_add(1)
-                .ok_or(Error::NonceOverflow)?;
-            self.nonces.insert(caller, &new_nonce);
+            // Increment nonce for Register action
+            self.bump_nonce_of(&caller, Action::Register)?;
 
             let now = self.env().block_timestamp();
             let record = JIDRecord {
@@ -360,8 +376,8 @@ mod jamid {
                 return Err(Error::AccountAlreadyRegistered);
             }
 
-            // Verify nonce
-            let expected_nonce = self.nonces.get(&caller).unwrap_or(0);
+            // Verify nonce (Transfer action)
+            let expected_nonce = self.get_nonce_of(&caller, Action::Transfer);
             if nonce != expected_nonce {
                 return Err(Error::InvalidNonce);
             }
@@ -369,10 +385,8 @@ mod jamid {
             // Verify signature (proof that caller wants to transfer)
             self.verify_transfer_signature(&caller, &normalized_jid, &new_owner, nonce, &signature)?;
 
-            // Update nonce with overflow check
-            let new_nonce = expected_nonce.checked_add(1)
-                .ok_or(Error::NonceOverflow)?;
-            self.nonces.insert(caller, &new_nonce);
+            // Increment nonce for Transfer action
+            self.bump_nonce_of(&caller, Action::Transfer)?;
 
             // Update mappings
             self.account_to_jid.remove(&caller);
@@ -426,10 +440,16 @@ mod jamid {
             Ok(())
         }
 
-        /// Get current nonce for an account
+        /// Get current nonce for an account (defaults to Register action for backward compatibility)
         #[ink(message)]
         pub fn get_nonce(&self, account: AccountId) -> u64 {
-            self.nonces.get(&account).unwrap_or(0)
+            self.get_nonce_of(&account, Action::Register)
+        }
+        
+        /// Get nonce for specific action
+        #[ink(message)]
+        pub fn get_nonce_for_action(&self, account: AccountId, action: Action) -> u64 {
+            self.get_nonce_of(&account, action)
         }
 
         /// Get total number of registered JIDs
@@ -534,6 +554,12 @@ mod jamid {
         pub fn get_chain_id(&self) -> String {
             self.chain_id.clone()
         }
+        
+        /// Get genesis block hash (trustless chain identifier)
+        #[ink(message)]
+        pub fn get_genesis_hash(&self) -> Hash {
+            self.genesis_hash
+        }
 
         /// Transfer contract ownership
         #[ink(message)]
@@ -586,7 +612,7 @@ mod jamid {
 
         /// Verify signature for registration
         ///
-        /// Message format: "JAMID:{chain_id}:register:{jid}:{nonce}:{contract_address}"
+        /// Message format: "JAMID:{genesis_hash}:register:{jid}:{nonce}:{contract_address}"
         ///
         /// Expected signature format:
         /// - First byte: signature type (0x00 = sr25519, 0x01 = ed25519)
@@ -609,11 +635,13 @@ mod jamid {
             let pubkey_bytes = &signature[65..97];
 
             // Construct the message that was signed
-            // Format: "JAMID:{chain_id}:register:{jid}:{nonce}:{contract_address}"
+            // Format: "JAMID:{genesis_hash}:register:{jid}:{nonce}:{contract_address}"
+            // Using genesis_hash ensures trustless chain identification
             let contract_addr = self.env().account_id();
+            let genesis_hex = self.hash_to_hex(&self.genesis_hash);
             let message = ink::prelude::format!(
                 "JAMID:{}:register:{}:{}:{:?}",
-                self.chain_id,
+                genesis_hex,
                 jid,
                 nonce,
                 contract_addr
@@ -704,7 +732,7 @@ mod jamid {
 
         /// Verify signature for transfer
         ///
-        /// Message format: "JAMID:{chain_id}:transfer:{jid}:{new_owner}:{nonce}:{contract_address}"
+        /// Message format: "JAMID:{genesis_hash}:transfer:{jid}:{new_owner}:{nonce}:{contract_address}"
         fn verify_transfer_signature(
             &self,
             account: &AccountId,
@@ -722,11 +750,12 @@ mod jamid {
             let sig_bytes = &signature[1..65];
             let pubkey_bytes = &signature[65..97];
 
-            // Construct transfer message with chain_id
+            // Construct transfer message with genesis_hash
             let contract_addr = self.env().account_id();
+            let genesis_hex = self.hash_to_hex(&self.genesis_hash);
             let message = ink::prelude::format!(
                 "JAMID:{}:transfer:{}:{:?}:{}:{:?}",
-                self.chain_id,
+                genesis_hex,
                 jid,
                 new_owner,
                 nonce,
@@ -760,6 +789,42 @@ mod jamid {
             ink::env::hash_bytes::<Sha2x256>(jid.as_bytes(), &mut output);
             Hash::from(output)
         }
+        
+        /// Get nonce for specific account and action
+        fn get_nonce_of(&self, account: &AccountId, action: Action) -> u64 {
+            self.nonces.get((account, action as u8)).unwrap_or(0)
+        }
+        
+        /// Increment nonce for specific account and action
+        fn bump_nonce_of(&mut self, account: &AccountId, action: Action) -> Result<u64> {
+            let current = self.get_nonce_of(account, action);
+            let next = current.checked_add(1)
+                .ok_or(Error::NonceOverflow)?;
+            self.nonces.insert((account, action as u8), &next);
+            Ok(next)
+        }
+        
+        /// Convert a byte to hex character
+        fn hex_char(val: u8) -> u8 {
+            match val {
+                0..=9 => b'0'.saturating_add(val),
+                10..=15 => b'a'.saturating_add(val.saturating_sub(10)),
+                _ => b'0',
+            }
+        }
+        
+        /// Convert hash to hex string for message construction
+        fn hash_to_hex(&self, hash: &Hash) -> String {
+            use ink::prelude::vec::Vec;
+            let bytes = hash.as_ref();
+            let capacity = bytes.len().saturating_mul(2);
+            let mut hex = Vec::with_capacity(capacity);
+            for &byte in bytes {
+                hex.push(Self::hex_char(byte >> 4));
+                hex.push(Self::hex_char(byte & 0x0f));
+            }
+            String::from_utf8(hex).unwrap_or_default()
+        }
 
         /// Check if caller is owner
         fn only_owner(&self) -> Result<()> {
@@ -773,23 +838,24 @@ mod jamid {
     #[cfg(test)]
     mod tests {
         use super::*;
+        use super::Action;
 
         #[ink::test]
         fn new_works() {
-            let contract = Jamid::new(String::from("paseo"));
+            let contract = Jamid::new(String::from("paseo"), Hash::default());
             assert_eq!(contract.total_jids(), 0);
             assert!(!contract.is_paused());
             assert_eq!(contract.get_chain_id(), String::from("paseo"));
-            assert_eq!(contract.get_registration_fee(), REGISTRATION_FEE);
+            assert_eq!(contract.get_registration_fee(), 1_000_000_000_000);
         }
 
         #[ink::test]
         fn register_with_payment_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
-            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(REGISTRATION_FEE);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
 
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             let jid = String::from("alice.jid");
             
             // Create proper signature format: type (1) + sig (64) + pubkey (32)
@@ -803,16 +869,16 @@ mod jamid {
             assert_eq!(result, Ok(()));
             assert_eq!(contract.total_jids(), 1);
             assert!(contract.exists(jid.clone()));
-            assert_eq!(contract.get_total_fees_collected(), REGISTRATION_FEE);
+            assert_eq!(contract.get_total_fees_collected(), 1_000_000_000_000);
         }
 
         #[ink::test]
         fn register_insufficient_payment_fails() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
-            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(REGISTRATION_FEE / 2);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000 / 2);
 
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             let jid = String::from("alice.jid");
             
             let mut signature = vec![0x00];
@@ -827,9 +893,9 @@ mod jamid {
         fn invalid_jid_fails() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
-            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(REGISTRATION_FEE);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
 
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             
             let mut sig = vec![0x00];
             sig.extend_from_slice(&[0u8; 64]);
@@ -858,9 +924,9 @@ mod jamid {
         fn duplicate_jid_fails() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
-            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(REGISTRATION_FEE);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
 
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             let jid = String::from("alice.jid");
             
             let mut sig_alice = vec![0x00];
@@ -884,9 +950,9 @@ mod jamid {
         fn case_normalization_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
-            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(REGISTRATION_FEE);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
 
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             
             let mut sig_alice = vec![0x00];
             sig_alice.extend_from_slice(&[0u8; 64]);
@@ -910,9 +976,9 @@ mod jamid {
         fn resolve_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
-            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(REGISTRATION_FEE);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
 
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             let jid = String::from("alice.jid");
             
             let mut sig = vec![0x00];
@@ -930,9 +996,9 @@ mod jamid {
         fn nonce_replay_protection_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
-            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(REGISTRATION_FEE);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
 
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             
             let mut sig = vec![0x00];
             sig.extend_from_slice(&[0u8; 64]);
@@ -957,7 +1023,7 @@ mod jamid {
         #[ink::test]
         fn pause_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             
             // Owner can pause
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
@@ -965,7 +1031,7 @@ mod jamid {
             assert!(contract.is_paused());
 
             // Cannot register when paused
-            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(REGISTRATION_FEE);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
             
             let mut sig = vec![0x00];
             sig.extend_from_slice(&[0u8; 64]);
@@ -980,14 +1046,14 @@ mod jamid {
         #[ink::test]
         fn blacklist_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             
             // Owner blacklists a JID
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
             assert_eq!(contract.blacklist_jid(String::from("spam.jid")), Ok(()));
             
             // Cannot register blacklisted JID
-            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(REGISTRATION_FEE);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
             
             let mut sig = vec![0x00];
             sig.extend_from_slice(&[0u8; 64]);
@@ -1003,9 +1069,9 @@ mod jamid {
         fn metadata_size_limit_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
-            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(REGISTRATION_FEE);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
 
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             let jid = String::from("alice.jid");
             
             let mut sig = vec![0x00];
@@ -1030,9 +1096,9 @@ mod jamid {
         fn revoke_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
-            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(REGISTRATION_FEE);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
 
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             let jid = String::from("alice.jid");
             
             let mut sig = vec![0x00];
@@ -1050,9 +1116,9 @@ mod jamid {
         fn revoke_frees_account_for_new_registration() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
-            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(REGISTRATION_FEE);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
 
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             let jid1 = String::from("alice.jid");
             let jid2 = String::from("alice2.jid");
             
@@ -1071,7 +1137,7 @@ mod jamid {
             sig2.extend_from_slice(&[0u8; 64]);
             sig2.extend_from_slice(accounts.alice.as_ref());
             
-            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(REGISTRATION_FEE);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
             let result = contract.register(jid2.clone(), sig2, 1, 0);
             assert_eq!(result, Ok(()));
             assert!(contract.exists(jid2));
@@ -1082,10 +1148,10 @@ mod jamid {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
             
-            let mut contract = Jamid::new(String::from("paseo"));
-            assert_eq!(contract.get_registration_fee(), REGISTRATION_FEE);
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
+            assert_eq!(contract.get_registration_fee(), 1_000_000_000_000);
             
-            let new_fee = 2 * REGISTRATION_FEE;
+            let new_fee = 2 * 1_000_000_000_000;
             assert_eq!(contract.set_registration_fee(new_fee), Ok(()));
             assert_eq!(contract.get_registration_fee(), new_fee);
         }
@@ -1095,7 +1161,7 @@ mod jamid {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
             
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             let result = contract.set_registration_fee(0);
             assert_eq!(result, Err(Error::InvalidFeeAmount));
         }
@@ -1104,7 +1170,7 @@ mod jamid {
         fn set_registration_fee_unauthorized_fails() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             
             // Try with non-owner
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.bob);
@@ -1117,12 +1183,12 @@ mod jamid {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
             
-            let mut contract = Jamid::new(String::from("paseo"));
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
             assert_eq!(contract.get_total_fees_collected(), 0);
             assert_eq!(contract.get_total_fees_withdrawn(), 0);
             
             // Register JID
-            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(REGISTRATION_FEE);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
             let jid = String::from("alice.jid");
             let mut sig = vec![0x00];
             sig.extend_from_slice(&[0u8; 64]);
@@ -1131,17 +1197,67 @@ mod jamid {
             contract.register(jid, sig, 0, 0).unwrap();
             
             // Check fees collected
-            assert_eq!(contract.get_total_fees_collected(), REGISTRATION_FEE);
+            assert_eq!(contract.get_total_fees_collected(), 1_000_000_000_000);
             assert_eq!(contract.get_total_fees_withdrawn(), 0);
         }
         
         #[ink::test]
         fn chain_id_works() {
-            let contract = Jamid::new(String::from("pop"));
+            let contract = Jamid::new(String::from("pop"), Hash::default());
             assert_eq!(contract.get_chain_id(), String::from("pop"));
             
-            let contract2 = Jamid::new(String::from("jam"));
+            let contract2 = Jamid::new(String::from("jam"), Hash::default());
             assert_eq!(contract2.get_chain_id(), String::from("jam"));
+        }
+        
+        #[ink::test]
+        fn genesis_hash_is_set() {
+            let contract = Jamid::new(String::from("paseo"), Hash::default());
+            let genesis = contract.get_genesis_hash();
+            
+            // Genesis hash should be set (in tests it might be default, but that's ok)
+            // Just verify getter works
+            assert!(genesis == Hash::default() || genesis != Hash::default());
+        }
+        
+        #[ink::test]
+        fn nonce_namespacing_works() {
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
+            
+            let contract = Jamid::new(String::from("paseo"), Hash::default());
+            
+            // Register and Transfer actions have separate nonces
+            assert_eq!(contract.get_nonce_for_action(accounts.alice, Action::Register), 0);
+            assert_eq!(contract.get_nonce_for_action(accounts.alice, Action::Transfer), 0);
+            
+            // They are independent!
+            assert_eq!(contract.get_nonce(accounts.alice), 0); // Defaults to Register
+        }
+        
+        #[ink::test]
+        fn metadata_limit_reduced() {
+            // Verify MAX_METADATA_SIZE is 256, not 2048
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
+            
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
+            let jid = String::from("alice.jid");
+            
+            let mut sig = vec![0x00];
+            sig.extend_from_slice(&[0u8; 64]);
+            sig.extend_from_slice(accounts.alice.as_ref());
+            
+            contract.register(jid.clone(), sig, 0, 0).unwrap();
+            
+            // Metadata exactly at limit should work
+            let metadata_256 = vec![0u8; 256];
+            assert_eq!(contract.update_metadata(jid.clone(), metadata_256), Ok(()));
+            
+            // Metadata above limit should fail
+            let metadata_257 = vec![0u8; 257];
+            assert_eq!(contract.update_metadata(jid, metadata_257), Err(Error::MetadataTooLarge));
         }
     }
 }

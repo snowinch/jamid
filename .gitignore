@@ -27,6 +27,15 @@ out/
 build
 dist
 
+# Rust/Cargo
+target/
+**/target/
+Cargo.lock
+
+# Ink! Contracts
+**/*.contract
+**/metadata.json
+
 
 # Debug
 npm-debug.log*

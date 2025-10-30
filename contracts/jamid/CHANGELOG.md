@@ -1,5 +1,88 @@
 # JAMID Contract Changelog
 
+## Version 0.3.1 (Hardening & Canonical Format)
+
+### 🔴 BREAKING CHANGES
+
+#### 1. **Canonical Message Format (AccountId in Hex)** ✅ CRITICAL
+- **Problem**: Previous implementation used Rust's `{:?}` debug format for `AccountId`, producing non-deterministic output
+- **Solution**: All `AccountId` values now explicitly converted to lowercase hex (without 0x prefix)
+
+**Message format changes:**
+```rust
+// OLD (non-deterministic)
+"JAMID:{genesis_hash}:register:{jid}:{nonce}:{contract:?}"
+
+// NEW (canonical)
+"JAMID:{genesis_hash}:register:{jid}:{nonce}:{contract_hex}"
+```
+
+**Registration message:**
+```
+JAMID:91b171bb...c90c3:register:alice.jid:0:5fe3a52b...7d8e
+```
+
+**Transfer message:**
+```
+JAMID:91b171bb...c90c3:transfer:alice.jid:8f7c2a...4b3d:0:5fe3a52b...7d8e
+```
+
+**Impact**: All existing signatures are invalidated. SDK must be updated to use hex format.
+
+**SDK Update Required:**
+```typescript
+// Helper function
+function accountToHex(address: string): string {
+  return u8aToHex(decodeAddress(address), -1, false).slice(2);
+}
+
+// Usage in message construction
+const contractHex = accountToHex(contractAddress);
+const newOwnerHex = accountToHex(newOwner);
+const message = `JAMID:${genesisHex}:register:${jid}:${nonce}:${contractHex}`;
+```
+
+### 🔒 Security Hardening
+
+#### 2. **Prevent Transfer to Zero Address** ✅
+- **Added check**: `if new_owner == AccountId::from([0u8; 32])`
+- **Behavior**: Transfer to zero address now returns `Error::Unauthorized`
+- **Reason**: Prevents permanent loss of JID ownership
+
+**Test added**: `transfer_to_zero_address_fails()`
+
+#### 3. **JID Validation - Consecutive Special Characters** ✅
+- **New checks**: Block `..`, `--`, `.-`, `-.` patterns
+- **Reason**: Prevents parsing ambiguities and display issues
+
+**Examples now rejected:**
+- `alice..jid` (double dots)
+- `alice--jid` (double hyphens)
+- `alice.-jid` (dot-hyphen)
+- `alice-.jid` (hyphen-dot)
+
+**Tests added**: 4 new assertions in `invalid_jid_fails()`
+
+### 🧪 Testing
+
+- **22 tests passing** (100% success rate)
+- +1 new test: `transfer_to_zero_address_fails()`
+- +4 new JID validation assertions
+
+### 📦 Build Output
+
+- **Contract size: 40KB** (WASM) - optimized from 41KB
+- **Bundle size: 102KB** (.contract) - optimized from 103KB
+- All clippy warnings resolved
+
+### 🔧 Internal Improvements
+
+- Added `account_to_hex()` helper for canonical AccountId serialization
+- Type annotations added for explicit `&[u8]` handling
+- Message construction now fully deterministic across all environments
+
+---
+
 ## Version 0.3.0 (Critical Security Fixes - Production Ready)
 
 ### 🔴 BREAKING CHANGES

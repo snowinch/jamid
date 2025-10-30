@@ -355,6 +355,11 @@ mod jamid {
                 return Err(Error::ContractPaused);
             }
 
+            // Prevent transfer to zero address (would lose the JID permanently)
+            if new_owner == AccountId::from([0u8; 32]) {
+                return Err(Error::Unauthorized);
+            }
+
             let caller = self.env().caller();
             let normalized_jid = jid.to_lowercase();
             let jid_hash = self.hash_jid(&normalized_jid);
@@ -607,6 +612,12 @@ mod jamid {
                 }
             }
 
+            // Check for consecutive special characters (prevents parsing/display issues)
+            if jid.contains("..") || jid.contains("--") || 
+               jid.contains(".-") || jid.contains("-.") {
+                return Err(Error::InvalidJID);
+            }
+
             Ok(())
         }
 
@@ -637,14 +648,16 @@ mod jamid {
             // Construct the message that was signed
             // Format: "JAMID:{genesis_hash}:register:{jid}:{nonce}:{contract_address}"
             // Using genesis_hash ensures trustless chain identification
+            // All components are in canonical hex format for deterministic verification
             let contract_addr = self.env().account_id();
             let genesis_hex = self.hash_to_hex(&self.genesis_hash);
+            let contract_hex = self.account_to_hex(&contract_addr);
             let message = ink::prelude::format!(
-                "JAMID:{}:register:{}:{}:{:?}",
+                "JAMID:{}:register:{}:{}:{}",
                 genesis_hex,
                 jid,
                 nonce,
-                contract_addr
+                contract_hex
             );
 
             // Hash the message
@@ -751,15 +764,18 @@ mod jamid {
             let pubkey_bytes = &signature[65..97];
 
             // Construct transfer message with genesis_hash
+            // All components in canonical hex format for deterministic verification
             let contract_addr = self.env().account_id();
             let genesis_hex = self.hash_to_hex(&self.genesis_hash);
+            let new_owner_hex = self.account_to_hex(new_owner);
+            let contract_hex = self.account_to_hex(&contract_addr);
             let message = ink::prelude::format!(
-                "JAMID:{}:transfer:{}:{:?}:{}:{:?}",
+                "JAMID:{}:transfer:{}:{}:{}:{}",
                 genesis_hex,
                 jid,
-                new_owner,
+                new_owner_hex,
                 nonce,
-                contract_addr
+                contract_hex
             );
 
             // Hash the message
@@ -817,6 +833,19 @@ mod jamid {
         fn hash_to_hex(&self, hash: &Hash) -> String {
             use ink::prelude::vec::Vec;
             let bytes = hash.as_ref();
+            let capacity = bytes.len().saturating_mul(2);
+            let mut hex = Vec::with_capacity(capacity);
+            for &byte in bytes {
+                hex.push(Self::hex_char(byte >> 4));
+                hex.push(Self::hex_char(byte & 0x0f));
+            }
+            String::from_utf8(hex).unwrap_or_default()
+        }
+        
+        /// Convert AccountId to canonical hex string (for deterministic message format)
+        fn account_to_hex(&self, account: &AccountId) -> String {
+            use ink::prelude::vec::Vec;
+            let bytes: &[u8] = account.as_ref();
             let capacity = bytes.len().saturating_mul(2);
             let mut hex = Vec::with_capacity(capacity);
             for &byte in bytes {
@@ -916,6 +945,30 @@ mod jamid {
             // Starts with dot
             assert_eq!(
                 contract.register(String::from(".alice"), sig.clone(), 0, 0),
+                Err(Error::InvalidJID)
+            );
+
+            // Consecutive dots
+            assert_eq!(
+                contract.register(String::from("alice..jid"), sig.clone(), 0, 0),
+                Err(Error::InvalidJID)
+            );
+
+            // Consecutive hyphens
+            assert_eq!(
+                contract.register(String::from("alice--jid"), sig.clone(), 0, 0),
+                Err(Error::InvalidJID)
+            );
+
+            // Dot followed by hyphen
+            assert_eq!(
+                contract.register(String::from("alice.-jid"), sig.clone(), 0, 0),
+                Err(Error::InvalidJID)
+            );
+
+            // Hyphen followed by dot
+            assert_eq!(
+                contract.register(String::from("alice-.jid"), sig.clone(), 0, 0),
                 Err(Error::InvalidJID)
             );
         }
@@ -1258,6 +1311,30 @@ mod jamid {
             // Metadata above limit should fail
             let metadata_257 = vec![0u8; 257];
             assert_eq!(contract.update_metadata(jid, metadata_257), Err(Error::MetadataTooLarge));
+        }
+
+        #[ink::test]
+        fn transfer_to_zero_address_fails() {
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
+            
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
+            let jid = String::from("alice.jid");
+            
+            let mut sig = vec![0x00];
+            sig.extend_from_slice(&[0u8; 64]);
+            sig.extend_from_slice(accounts.alice.as_ref());
+            
+            // Register JID
+            contract.register(jid.clone(), sig.clone(), 0, 0).unwrap();
+            
+            // Attempt transfer to zero address (should fail)
+            let zero_address = AccountId::from([0u8; 32]);
+            let result = contract.transfer(jid, zero_address, sig, 0);
+            
+            // Should reject transfer to zero address
+            assert_eq!(result, Err(Error::Unauthorized));
         }
     }
 }

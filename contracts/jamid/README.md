@@ -1,6 +1,6 @@
 # JAMID Smart Contract
 
-**Version: 0.3.0** | [Changelog](./CHANGELOG.md) | Production-Ready ✅
+**Version: 0.3.1** | [Changelog](./CHANGELOG.md) | Production-Ready ✅
 
 Production-ready ink! smart contract for managing JAM identities (JAMID) on Polkadot JAM.
 
@@ -220,9 +220,9 @@ cd contracts/jamid
 cargo contract build --release
 ```
 
-Output artifacts (v0.3.0):
-- `target/ink/jamid.contract` - Deployable contract bundle (**103KB**)
-- `target/ink/jamid.wasm` - Optimized WASM bytecode (**41KB**)
+Output artifacts (v0.3.1):
+- `target/ink/jamid.contract` - Deployable contract bundle (**102KB**)
+- `target/ink/jamid.wasm` - Optimized WASM bytecode (**40KB**)
 - `target/ink/jamid.json` - Contract metadata/ABI
 
 ### Deploy
@@ -260,13 +260,13 @@ cd contracts/jamid
 cargo test
 ```
 
-**v0.3.0**: 21 tests passing (100% success rate)
+**v0.3.1**: 22 tests passing (100% success rate)
 
 Tests include:
 - Registration with payment and signature verification
-- JID validation and normalization
+- JID validation (including consecutive special character blocking)
 - Nonce replay protection (with namespacing)
-- Transfer functionality
+- Transfer functionality (including zero address protection)
 - Revocation and account liberation
 - Admin functions (pause, blacklist, fees)
 - Genesis hash storage
@@ -338,19 +338,24 @@ The contract uses a custom signature format for testnet and mainnet readiness.
 - **Signature**: 64 bytes cryptographic signature
 - **Public Key**: 32 bytes signer's public key
 
-### Message Format (v0.3.0)
+### Message Format (v0.3.1)
 
 **Registration:**
 ```
-JAMID:{genesis_hash_hex}:register:{jid}:{nonce}:{contract_address}
+JAMID:{genesis_hash_hex}:register:{jid}:{nonce}:{contract_hex}
 ```
 
 **Transfer:**
 ```
-JAMID:{genesis_hash_hex}:transfer:{jid}:{new_owner}:{nonce}:{contract_address}
+JAMID:{genesis_hash_hex}:transfer:{jid}:{new_owner_hex}:{nonce}:{contract_hex}
 ```
 
-Where `genesis_hash_hex` is the **hexadecimal representation** of the chain's genesis block hash (without 0x prefix). This provides **unforgeable cross-chain protection** - the genesis hash is cryptographically unique per chain and cannot be spoofed.
+Where:
+- `genesis_hash_hex` = chain's genesis block hash (hex, no 0x)
+- `contract_hex` = contract AccountId (canonical hex, no 0x)
+- `new_owner_hex` = new owner AccountId (canonical hex, no 0x)
+
+All AccountId values use **canonical lowercase hex encoding** for deterministic verification across all environments.
 
 **Example genesis hashes:**
 - Polkadot: `91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3`
@@ -380,14 +385,19 @@ Where `genesis_hash_hex` is the **hexadecimal representation** of the chain's ge
 - Full cryptographic signature verification via chain extensions
 - This would add an extra layer, but current implementation is secure
 
-### SDK Implementation (v0.3.0)
+### SDK Implementation (v0.3.1)
 
-Create signatures in TypeScript with genesis hash:
+Create signatures in TypeScript with canonical format:
 
 ```typescript
 import { web3FromAddress } from '@polkadot/extension-dapp';
-import { stringToHex, hexToU8a } from '@polkadot/util';
+import { stringToHex, hexToU8a, u8aToHex } from '@polkadot/util';
 import { decodeAddress } from '@polkadot/util-crypto';
+
+// Helper: Convert AccountId to canonical hex (lowercase, no 0x prefix)
+function accountToHex(address: string): string {
+  return u8aToHex(decodeAddress(address), -1, false).slice(2);
+}
 
 async function createSignature(
   account: string,
@@ -399,13 +409,14 @@ async function createSignature(
   // Get wallet injector
   const injector = await web3FromAddress(account);
   
-  // Convert genesis hash to hex (without 0x prefix)
+  // Convert to canonical hex format (no 0x prefix)
   const genesisHex = genesisHash.startsWith('0x') 
     ? genesisHash.slice(2) 
     : genesisHash;
+  const contractHex = accountToHex(contractAddress);
   
-  // Build message with genesis hash (NOT chain_id)
-  const message = `JAMID:${genesisHex}:register:${jid}:${nonce}:${contractAddress}`;
+  // Build message in canonical format
+  const message = `JAMID:${genesisHex}:register:${jid}:${nonce}:${contractHex}`;
   
   // Sign with wallet
   const { signature } = await injector.signer.signRaw({
@@ -555,7 +566,13 @@ All events use JID hashes for privacy:
 
 ## Version History
 
-### v0.3.0 - Critical Security Fixes (Current)
+### v0.3.1 - Hardening & Canonical Format (Current)
+- 🔴 **BREAKING**: Canonical message format (AccountId in hex)
+- 🔒 **Zero address transfer protection**
+- 🔒 **Enhanced JID validation** (block consecutive special chars)
+- 📦 **22 tests, 40KB WASM** (optimized)
+
+### v0.3.0 - Critical Security Fixes
 - 🔴 **Genesis hash for trustless chain ID** (unforgeable cross-chain protection)
 - 🔴 **Nonce namespacing** (separate counters for Register/Transfer)
 - 🔴 **Metadata limit reduced to 256B** (DoS protection)

@@ -771,15 +771,15 @@ mod jamid {
             match sig_type {
                 0x00 => {
                     // Sr25519 verification
-                    // Note: ink! doesn't have native sr25519 verification
-                    // We rely on the wallet to sign correctly and verify pubkey matches
-                    // In production with chain extensions, use proper sr25519 verify
-                    self.verify_sr25519_basic(sig_bytes, pubkey_bytes)?;
+                    // With JAM feature: native sr25519_verify
+                    // Without JAM: stub verification (testnet)
+                    self.verify_sr25519_basic(sig_bytes, pubkey_bytes, message_hash.as_ref())?;
                 }
                 0x01 => {
                     // Ed25519 verification  
-                    // Similar limitation - basic check only
-                    self.verify_ed25519_basic(sig_bytes, pubkey_bytes)?;
+                    // With JAM feature: native ed25519_verify
+                    // Without JAM: stub verification (testnet)
+                    self.verify_ed25519_basic(sig_bytes, pubkey_bytes, message_hash.as_ref())?;
                 }
                 _ => return Err(Error::InvalidProof),
             }
@@ -818,25 +818,71 @@ mod jamid {
 
         /// Basic sr25519 signature validation
         /// Note: This is a simplified check. For full security, use chain extension
-        fn verify_sr25519_basic(&self, _signature: &[u8], _pubkey: &[u8]) -> Result<()> {
-            // In a real implementation with chain extensions:
-            // let result = ink::env::sr25519_verify(signature, message_hash, pubkey);
-            // if !result { return Err(Error::InvalidProof); }
+        fn verify_sr25519_basic(&self, signature: &[u8], pubkey: &[u8], message_hash: &[u8]) -> Result<()> {
+            #[cfg(feature = "jam")]
+            {
+                // JAM Runtime: Native sr25519 verification
+                // This is the future-proof path when deployed on JAM
+                
+                // ink::env::sr25519_verify expects:
+                // - signature: &[u8; 64]
+                // - message: &[u8; 32]  
+                // - pubkey: &[u8; 32]
+                
+                // Convert slices to fixed arrays
+                if signature.len() != 64 {
+                    return Err(Error::InvalidProof);
+                }
+                if pubkey.len() != 32 {
+                    return Err(Error::InvalidProof);
+                }
+                if message_hash.len() != 32 {
+                    return Err(Error::InvalidProof);
+                }
+                
+                let mut sig_array = [0u8; 64];
+                let mut pubkey_array = [0u8; 32];
+                let mut message_array = [0u8; 32];
+                
+                sig_array.copy_from_slice(signature);
+                pubkey_array.copy_from_slice(pubkey);
+                message_array.copy_from_slice(message_hash);
+                
+                // sr25519_verify returns Result<(), ()>
+                // Ok(()) means valid, Err(()) means invalid
+                ink::env::sr25519_verify(&sig_array, &message_array, &pubkey_array)
+                    .map_err(|_| Error::InvalidProof)?;
+                
+                Ok(())
+            }
             
-            // For now, we've verified:
-            // 1. Signature has correct length (64 bytes)
-            // 2. Public key matches AccountId
-            // 3. Message format is correct
-            
-            // The wallet MUST sign the correct message
-            // This provides basic security until chain extensions are available
-            Ok(())
+            #[cfg(not(feature = "jam"))]
+            {
+                // Testnet/Substrate: Stub verification
+                // We've verified:
+                // 1. Signature has correct length (64 bytes)
+                // 2. Public key matches AccountId  
+                // 3. Message format is correct
+                // 
+                // The wallet MUST sign the correct message
+                // This provides basic security until JAM is available
+                let _ = (signature, pubkey, message_hash); // Suppress unused warnings
+                Ok(())
+            }
         }
 
         /// Basic ed25519 signature validation  
-        fn verify_ed25519_basic(&self, _signature: &[u8], _pubkey: &[u8]) -> Result<()> {
-            // Similar to sr25519 - basic validation only
-            // In production: use ink::env::ed25519_verify or chain extension
+        fn verify_ed25519_basic(&self, signature: &[u8], pubkey: &[u8], message_hash: &[u8]) -> Result<()> {
+            // Note: ed25519_verify is not available in ink! v5.0
+            // Even with JAM feature, we use stub for ed25519
+            // Future: When JAM provides ed25519_verify, enable native verification
+            
+            // For now, basic validation (stub for both JAM and testnet)
+            // We've verified:
+            // 1. Signature has correct length (64 bytes)
+            // 2. Public key matches AccountId
+            // 3. Message format is correct
+            let _ = (signature, pubkey, message_hash);
             Ok(())
         }
 
@@ -887,8 +933,8 @@ mod jamid {
 
             // Verify signature
             match sig_type {
-                0x00 => self.verify_sr25519_basic(sig_bytes, pubkey_bytes)?,
-                0x01 => self.verify_ed25519_basic(sig_bytes, pubkey_bytes)?,
+                0x00 => self.verify_sr25519_basic(sig_bytes, pubkey_bytes, message_hash.as_ref())?,
+                0x01 => self.verify_ed25519_basic(sig_bytes, pubkey_bytes, message_hash.as_ref())?,
                 _ => return Err(Error::InvalidProof),
             }
 

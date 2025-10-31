@@ -1,6 +1,6 @@
 [package]
 name = "jamid"
-version = "0.3.3"
+version = "0.3.4"
 authors = ["Snowinch <https://github.com/snowinch>"]
 edition = "2021"
 
@@ -20,6 +20,9 @@ std = [
     "scale-info/std",
 ]
 ink-as-dependency = []
+# JAM runtime native signature verification
+# When enabled, uses ink::env::sr25519_verify instead of stub
+jam = []
 
 [lib]
 path = "lib.rs"

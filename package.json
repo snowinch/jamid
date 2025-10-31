@@ -12,7 +12,11 @@
     "contract:jamid:test": "cd contracts/jamid && cargo test",
     "contract:jamid:check": "cd contracts/jamid && cargo check",
     "contract:jamid:clean": "cd contracts/jamid && cargo clean",
-    "contract:jamid:clippy": "cd contracts/jamid && cargo clippy --all-targets --all-features"
+    "contract:jamid:clippy": "cd contracts/jamid && cargo clippy --all-targets --all-features",
+    "jamid": "cd packages/cli && npm run start",
+    "jamid:build": "cd packages/cli && npm run build",
+    "jamid:deploy": "cd packages/cli && npm run start deploy",
+    "jamid:info": "cd packages/cli && npm run start info"
   },
   "devDependencies": {
     "prettier": "^3.6.2",
@@ -26,5 +30,10 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "overrides": {
+    "@polkadot/util": "^13.5.7",
+    "@polkadot/util-crypto": "^13.5.7",
+    "@polkadot/keyring": "^13.5.7"
+  }
 }

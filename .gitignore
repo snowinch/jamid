@@ -26,6 +26,7 @@ coverage
 out/
 build
 dist
+*.tsbuildinfo
 
 # Rust/Cargo
 target/
@@ -45,3 +46,11 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# Deployment configs
+jamid.config.json
+*.config.json
+
+# Wallet files (contain private keys!)
+*wallet.json
+**/wallet.json

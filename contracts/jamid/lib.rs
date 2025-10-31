@@ -90,6 +90,16 @@ mod jamid {
     }
 
     #[ink(event)]
+    pub struct JidAdminRevoked {
+        #[ink(topic)]
+        jid_hash: Hash,
+        #[ink(topic)]
+        old_owner: AccountId,
+        reason_hash: Hash,
+        timestamp: Timestamp,
+    }
+
+    #[ink(event)]
     pub struct JIDUpdated {
         #[ink(topic)]
         jid_hash: Hash,
@@ -137,6 +147,8 @@ mod jamid {
         NonceOverflow,
         /// Invalid fee amount
         InvalidFeeAmount,
+        /// JID is already revoked
+        AlreadyRevoked,
     }
 
     pub type Result<T> = core::result::Result<T, Error>;
@@ -523,6 +535,68 @@ mod jamid {
             let normalized_jid = jid.to_lowercase();
             let jid_hash = self.hash_jid(&normalized_jid);
             self.blacklist.get(&jid_hash).unwrap_or(false)
+        }
+
+        /// Force revoke a JID (admin only)
+        /// 
+        /// This function allows the contract owner to revoke any JID for policy violations
+        /// (e.g., trademark infringement, offensive content, namespace squatting).
+        /// 
+        /// # Arguments
+        /// * `jid` - The JID to revoke
+        /// * `reason` - Reason for revocation (max 256 bytes, will be hashed in event for privacy)
+        /// 
+        /// # Errors
+        /// * `Unauthorized` - If caller is not the contract owner
+        /// * `JIDNotFound` - If the JID does not exist
+        /// * `AlreadyRevoked` - If the JID is already revoked
+        /// * `MetadataTooLarge` - If reason exceeds 256 bytes
+        #[ink(message)]
+        pub fn admin_revoke(&mut self, jid: String, reason: Vec<u8>) -> Result<()> {
+            self.only_owner()?;
+            
+            // Validate reason size
+            if reason.len() > 256 {
+                return Err(Error::MetadataTooLarge);
+            }
+            
+            let normalized_jid = jid.to_lowercase();
+            let jid_hash = self.hash_jid(&normalized_jid);
+            let mut record = self.jid_registry.get(&jid_hash)
+                .ok_or(Error::JIDNotFound)?;
+            
+            // Check if already revoked
+            if !record.is_active {
+                return Err(Error::AlreadyRevoked);
+            }
+            
+            let old_owner = record.owner;
+            
+            // Revoke the JID
+            record.is_active = false;
+            record.updated_at = self.env().block_timestamp();
+            self.jid_registry.insert(&jid_hash, &record);
+            
+            // Remove from account mapping (allows owner to register new JID)
+            self.account_to_jid.remove(&old_owner);
+            
+            // Emit event with reason hash for privacy
+            use ink::env::hash::{Blake2x256, HashOutput};
+            let mut reason_hash_bytes = <Blake2x256 as HashOutput>::Type::default();
+            ink::env::hash_bytes::<Blake2x256>(&reason, &mut reason_hash_bytes);
+            
+            // Convert to fixed-size array for Hash
+            let mut hash_array = [0u8; 32];
+            hash_array.copy_from_slice(reason_hash_bytes.as_ref());
+            
+            self.env().emit_event(JidAdminRevoked {
+                jid_hash,
+                old_owner,
+                reason_hash: Hash::from(hash_array),
+                timestamp: record.updated_at,
+            });
+            
+            Ok(())
         }
 
         /// Withdraw contract balance (admin only)
@@ -1358,6 +1432,123 @@ mod jamid {
             
             // Should reject transfer to zero address
             assert_eq!(result, Err(Error::Unauthorized));
+        }
+
+        #[ink::test]
+        fn admin_revoke_works() {
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
+            
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
+            let jid = String::from("alice.jid");
+            
+            let mut sig = vec![0x00];
+            sig.extend_from_slice(&[0u8; 64]);
+            sig.extend_from_slice(accounts.alice.as_ref());
+            
+            // Alice registers JID
+            contract.register(jid.clone(), sig, 0, 0).unwrap();
+            assert!(contract.exists(jid.clone()));
+            
+            // Switch to owner (bob in this test setup, as per default_accounts)
+            // In our contract, owner is set to caller in constructor, so alice is owner
+            // For admin_revoke to work, we need to be the owner (alice)
+            
+            // Admin revokes alice's JID
+            let reason = b"Policy violation".to_vec();
+            assert!(contract.admin_revoke(jid.clone(), reason).is_ok());
+            
+            // JID should still exist but be inactive
+            assert!(contract.exists(jid.clone()));
+            let result = contract.resolve(jid.clone());
+            assert!(result.is_err()); // resolve returns error for inactive JIDs
+            
+            // Alice should be able to register a new JID now
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
+            
+            let new_jid = String::from("alice2.jid");
+            let mut sig2 = vec![0x00];
+            sig2.extend_from_slice(&[0u8; 64]);
+            sig2.extend_from_slice(accounts.alice.as_ref());
+            
+            assert!(contract.register(new_jid.clone(), sig2, 1, 0).is_ok());
+        }
+
+        #[ink::test]
+        fn admin_revoke_fails_if_not_owner() {
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
+            
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
+            let jid = String::from("alice.jid");
+            
+            let mut sig = vec![0x00];
+            sig.extend_from_slice(&[0u8; 64]);
+            sig.extend_from_slice(accounts.alice.as_ref());
+            
+            // Alice registers JID
+            contract.register(jid.clone(), sig, 0, 0).unwrap();
+            
+            // Bob tries to admin revoke (should fail - not owner)
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.bob);
+            
+            let reason = b"Unauthorized attempt".to_vec();
+            let result = contract.admin_revoke(jid.clone(), reason);
+            
+            assert_eq!(result, Err(Error::Unauthorized));
+        }
+
+        #[ink::test]
+        fn admin_revoke_fails_if_already_revoked() {
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
+            
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
+            let jid = String::from("alice.jid");
+            
+            let mut sig = vec![0x00];
+            sig.extend_from_slice(&[0u8; 64]);
+            sig.extend_from_slice(accounts.alice.as_ref());
+            
+            // Alice registers JID
+            contract.register(jid.clone(), sig, 0, 0).unwrap();
+            
+            // Admin revokes once
+            let reason = b"First revocation".to_vec();
+            assert!(contract.admin_revoke(jid.clone(), reason).is_ok());
+            
+            // Try to revoke again (should fail - already revoked)
+            let reason2 = b"Second revocation".to_vec();
+            let result = contract.admin_revoke(jid.clone(), reason2);
+            
+            assert_eq!(result, Err(Error::AlreadyRevoked));
+        }
+
+        #[ink::test]
+        fn admin_revoke_fails_with_large_reason() {
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1_000_000_000_000);
+            
+            let mut contract = Jamid::new(String::from("paseo"), Hash::default());
+            let jid = String::from("alice.jid");
+            
+            let mut sig = vec![0x00];
+            sig.extend_from_slice(&[0u8; 64]);
+            sig.extend_from_slice(accounts.alice.as_ref());
+            
+            // Alice registers JID
+            contract.register(jid.clone(), sig, 0, 0).unwrap();
+            
+            // Try to revoke with reason > 256 bytes
+            let reason = vec![0u8; 257];
+            let result = contract.admin_revoke(jid.clone(), reason);
+            
+            assert_eq!(result, Err(Error::MetadataTooLarge));
         }
     }
 }

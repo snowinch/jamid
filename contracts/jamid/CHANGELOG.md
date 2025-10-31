@@ -1,5 +1,77 @@
 # JAMID Contract Changelog
 
+## Version 0.3.3 (Pre-Testnet Hardening)
+
+### 🆕 New Features
+
+#### 1. **Admin Revoke Function** ✅ NEW
+- **Feature**: Contract owner can force-revoke any JID for policy violations
+- **Use Cases**: 
+  - Trademark infringement
+  - Offensive content
+  - Namespace squatting on reserved names (e.g., "gov.*", "official.*")
+  - Terms of service violations
+- **Implementation**:
+  - New message: `admin_revoke(jid, reason)`
+  - Validates reason size (max 256 bytes)
+  - Checks if JID is already revoked (prevents duplicate revocations)
+  - Removes account mapping (allows owner to register new JID)
+  - Emits `JidAdminRevoked` event with reason hash (privacy-preserving)
+
+**Function signature:**
+```rust
+#[ink(message)]
+pub fn admin_revoke(&mut self, jid: String, reason: Vec<u8>) -> Result<()>
+```
+
+**New Event:**
+```rust
+pub struct JidAdminRevoked {
+    jid_hash: Hash,
+    old_owner: AccountId,
+    reason_hash: Hash,      // Privacy: only hash is stored on-chain
+    timestamp: Timestamp,
+}
+```
+
+**New Error:**
+```rust
+AlreadyRevoked  // Returned if JID is already revoked
+```
+
+### 🧪 Testing
+
+- **26 tests passing** (100% success rate)
+- +4 new tests for `admin_revoke`:
+  - `admin_revoke_works()` - Successful revocation by owner
+  - `admin_revoke_fails_if_not_owner()` - Non-owner cannot revoke
+  - `admin_revoke_fails_if_already_revoked()` - Prevents duplicate revocations
+  - `admin_revoke_fails_with_large_reason()` - Validates reason size
+
+### 📦 Build Output
+
+- **Contract size: 42.1KB** (WASM) - slight increase due to new feature
+- **Bundle size: ~104KB** (.contract)
+- All tests passing
+
+### 🎯 Purpose
+
+This version prepares the contract for testnet deployment by adding essential admin capabilities for managing namespace policies and responding to violations. The `admin_revoke` function enables proactive governance while preserving user privacy (reason is hashed).
+
+### 🔧 Recommendations
+
+**For Testnet Deployment:**
+- ✅ Ready for Paseo testnet
+- ✅ Admin can manage reserved namespaces
+- ✅ OpenGov integration ready (can revoke squatted "gov.*" names)
+
+**Next Steps:**
+1. Deploy on Paseo testnet
+2. Test admin revoke flow with governance scenarios
+3. Gather community feedback on namespace policies
+
+---
+
 ## Version 0.3.2 (Critical Bug Fixes)
 
 ### 🔴 CRITICAL FIXES

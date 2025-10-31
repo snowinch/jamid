@@ -1,8 +1,37 @@
 # JAMID Smart Contract
 
-**Version: 0.3.2** | [Changelog](./CHANGELOG.md) | Production-Ready ✅
+**Version: 0.3.3** | [Changelog](./CHANGELOG.md)
 
 Production-ready ink! smart contract for managing JAM identities (JAMID) on Polkadot JAM.
+
+## ⚠️ DEPLOYMENT STATUS
+
+### 🟢 TESTNET READY
+- ✅ Paseo Testnet
+- ✅ Local Development Nodes  
+- ✅ Pop Network (if chain extensions available)
+
+### 🔴 MAINNET LIMITATIONS
+
+**Current Limitation:** Signature verification uses format validation only (ink! v5.0 constraint)
+
+**What's Implemented:**
+- ✅ Signature structure validation (type, length, 97 bytes)
+- ✅ Public key matches caller's AccountId
+- ✅ Replay protection (nonce, genesis_hash, chain_id)
+- ✅ Message format with all security parameters
+- ✅ All security hardening (admin revoke, expiration, blacklist)
+
+**What's Missing:**
+- ❌ Cryptographic signature verification (sr25519/ed25519)
+- ❌ Requires: ink! chain extensions (not available in v5.0)
+
+**Risk on Mainnet:** Signatures can be forged with correct structure  
+**Recommendation:** Deploy on testnet only until chain extensions are available
+
+**Tracking:** Monitor [paritytech/ink](https://github.com/paritytech/ink) for chain extension updates
+
+---
 
 ## Overview
 
@@ -203,6 +232,30 @@ Removes a JID from the blacklist.
 
 Checks if a JID is blacklisted.
 
+### `admin_revoke(jid, reason)` 🆕 v0.3.3
+
+Force revoke a JID (owner only) for policy violations.
+
+**Use Cases:**
+- Trademark infringement
+- Offensive content
+- Namespace squatting on reserved names (e.g., "gov.*", "official.*")
+- Terms of service violations
+
+**Parameters:**
+- `jid`: JID to revoke
+- `reason`: Reason for revocation (max 256 bytes, hashed in event)
+
+**Process:**
+1. Validates caller is contract owner
+2. Validates reason size (≤ 256 bytes)
+3. Checks JID is not already revoked
+4. Marks JID as inactive
+5. Removes account mapping (allows owner to register new JID)
+6. Emits `JidAdminRevoked` event with reason hash (privacy-preserving)
+
+**Note**: Unlike user `revoke()`, admin can revoke ANY JID, not just their own.
+
 ### `withdraw(amount)`
 
 Withdraws collected fees (owner only). 
@@ -231,9 +284,9 @@ cd contracts/jamid
 cargo contract build --release
 ```
 
-Output artifacts (v0.3.2):
-- `target/ink/jamid.contract` - Deployable contract bundle (**~103KB**)
-- `target/ink/jamid.wasm` - Optimized WASM bytecode (**41.2KB**)
+Output artifacts (v0.3.3):
+- `target/ink/jamid.contract` - Deployable contract bundle (**~104KB**)
+- `target/ink/jamid.wasm` - Optimized WASM bytecode (**42.1KB**)
 - `target/ink/jamid.json` - Contract metadata/ABI
 
 ### Deploy
@@ -271,12 +324,13 @@ cd contracts/jamid
 cargo test
 ```
 
-**v0.3.2**: 22 tests passing (100% success rate)
+**v0.3.3**: 26 tests passing (100% success rate)
 
 Tests include:
 - Registration with payment and signature verification
 - JID validation (including consecutive special character blocking)
 - Nonce replay protection (with namespacing)
+- Admin revoke (policy enforcement and access control)
 - Transfer functionality (including zero address protection)
 - Revocation and account liberation
 - Admin functions (pause, blacklist, fees)
@@ -577,7 +631,13 @@ All events use JID hashes for privacy:
 
 ## Version History
 
-### v0.3.2 - Critical Bug Fixes (Current)
+### v0.3.3 - Pre-Testnet Hardening (Current)
+- 🆕 **Admin revoke function** (policy enforcement)
+- ✅ **26 tests passing** (4 new tests for admin revoke)
+- 📦 **42.1KB WASM** (testnet-ready)
+- 🎯 **OpenGov integration ready** (namespace governance)
+
+### v0.3.2 - Critical Bug Fixes
 - 🔴 **Fixed withdraw() race condition** (accounting after transfer)
 - 🔒 **Fixed resolve_by_account() policy** (respects active/expired status)
 - 🔧 **Code consistency improvements** (standardized remove() calls)

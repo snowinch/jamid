@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light theme colors */
+    --color-background: 255 255 255;
+    --color-foreground: 0 0 0;
+    --color-muted: 245 245 245;
+    --color-border: 0 0 0;
+    --color-primary: 230 0 122; /* #E6007A */
+    --color-primary-foreground: 255 255 255;
+    --color-secondary: 0 0 0;
+    --color-accent: 255 215 0;
+  }
+
+  .dark {
+    /* Dark theme colors */
+    --color-background: 0 0 0;
+    --color-foreground: 255 255 255;
+    --color-muted: 20 20 20;
+    --color-border: 255 255 255;
+    --color-primary: 230 0 122; /* #E6007A */
+    --color-primary-foreground: 255 255 255;
+    --color-secondary: 255 255 255;
+    --color-accent: 255 215 0;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Neo-brutalist typography */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-black tracking-tight;
+  }
+
+  strong {
+    @apply font-black;
+  }
+}
+
+@layer components {
+  /* Neo-brutalist shadow utilities */
+  .brutal-shadow {
+    box-shadow: 4px 4px 0 rgb(var(--color-border));
+  }
+
+  .brutal-shadow-sm {
+    box-shadow: 2px 2px 0 rgb(var(--color-border));
+  }
+
+  .brutal-shadow-lg {
+    box-shadow: 6px 6px 0 rgb(var(--color-border));
+  }
+
+  .brutal-shadow-xl {
+    box-shadow: 8px 8px 0 rgb(var(--color-border));
+  }
+
+  /* Neo-brutalist button base */
+  .btn-brutal {
+    @apply inline-flex items-center justify-center font-black uppercase tracking-wide border-2 border-current transition-all;
+    @apply hover:translate-x-[2px] hover:translate-y-[2px];
+  }
+
+  /* Card base */
+  .card-brutal {
+    @apply border-2 border-current brutal-shadow bg-background;
+  }
+
+  /* Input base */
+  .input-brutal {
+    @apply w-full border-2 border-current bg-background px-4 py-3 font-mono text-sm;
+    @apply focus:outline-none focus:ring-0 focus:translate-x-[2px] focus:translate-y-[2px];
+  }
+
+  /* Table brutal */
+  .table-brutal {
+    @apply w-full border-2 border-current;
+  }
+
+  .table-brutal th {
+    @apply border-2 border-current bg-foreground text-background p-4 text-left font-black uppercase;
+  }
+
+  .table-brutal td {
+    @apply border-2 border-current p-4;
+  }
+}
+
+@layer utilities {
+  /* Custom utility classes */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Background utilities */
+  .bg-background {
+    background-color: rgb(var(--color-background));
+  }
+
+  .bg-foreground {
+    background-color: rgb(var(--color-foreground));
+  }
+
+  .bg-muted {
+    background-color: rgb(var(--color-muted));
+  }
+
+  .bg-primary {
+    background-color: rgb(var(--color-primary));
+  }
+
+  .bg-accent {
+    background-color: rgb(var(--color-accent));
+  }
+
+  /* Text utilities */
+  .text-background {
+    color: rgb(var(--color-background));
+  }
+
+  .text-foreground {
+    color: rgb(var(--color-foreground));
+  }
+
+  .text-muted {
+    color: rgb(var(--color-muted));
+  }
+
+  .text-primary {
+    color: rgb(var(--color-primary));
+  }
+
+  .text-accent {
+    color: rgb(var(--color-accent));
+  }
+
+  /* Border utilities */
+  .border-current {
+    border-color: rgb(var(--color-border));
+  }
+}

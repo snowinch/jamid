@@ -9,20 +9,21 @@ import {
   checkBalance,
 } from "./commands/wallet.js";
 import chalk from "chalk";
+import { VERSION } from "./version.js";
 
 const program = new Command();
 
 program
   .name("jamid")
   .description("CLI tool for deploying and managing JAMID smart contracts")
-  .version("0.3.1");
+  .version(VERSION);
 
 // ASCII Art Banner
 console.log(
   chalk.cyan(`
 ╔═══════════════════════════════════════╗
 ║                                       ║
-║        JAMID CLI v0.3.1               ║
+║        JAMID CLI v${VERSION}               ║
 ║   JAM Identity Layer Contract Tool    ║
 ║                                       ║
 ╚═══════════════════════════════════════╝

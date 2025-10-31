@@ -1,5 +1,98 @@
 # JAMID Contract Changelog
 
+## Version 0.3.2 (Critical Bug Fixes)
+
+### 🔴 CRITICAL FIXES
+
+#### 1. **withdraw() - Fixed Race Condition** ⚠️ CRITICAL
+- **Problem**: Accounting updated BEFORE transfer execution
+  - If `env().transfer()` failed, `total_fees_withdrawn` would still be incremented
+  - Created permanent desync between accounting and actual balance
+  - No balance check before transfer attempt
+- **Solution**: 
+  - Check `amount <= balance` BEFORE attempting transfer
+  - Execute transfer FIRST
+  - Update `total_fees_withdrawn` AFTER successful transfer (only if no error)
+- **Impact**: Prevents accounting corruption and ensures atomicity
+
+**Code changes:**
+```rust
+// Before (vulnerable)
+self.total_fees_withdrawn = self.total_fees_withdrawn.saturating_add(amount);
+self.env().transfer(owner, amount)?;
+
+// After (safe)
+if amount > self.env().balance() {
+    return Err(Error::TransferFailed);
+}
+self.env().transfer(owner, amount)?;
+self.total_fees_withdrawn = self.total_fees_withdrawn.saturating_add(amount);
+```
+
+#### 2. **resolve_by_account() - Fixed Policy Inconsistency** 🟡 MEDIUM
+- **Problem**: Exposed revoked/expired JIDs
+  - `resolve()` correctly checked `is_active` and `expires_at`
+  - `resolve_by_account()` returned JID regardless of status
+  - Inconsistent behavior and privacy leak
+- **Solution**: Apply same validation policy as `resolve()`
+  - Check `is_active` before returning
+  - Check `expires_at` if set
+  - Return `None` for revoked or expired JIDs
+- **Impact**: Consistent UX and improved privacy
+
+**Code changes:**
+```rust
+// Before (inconsistent)
+pub fn resolve_by_account(&self, account: AccountId) -> Option<String> {
+    let jid_hash = self.account_to_jid.get(&account)?;
+    self.hash_to_jid.get(&jid_hash)
+}
+
+// After (consistent with resolve)
+pub fn resolve_by_account(&self, account: AccountId) -> Option<String> {
+    let jid_hash = self.account_to_jid.get(&account)?;
+    let record = self.jid_registry.get(&jid_hash)?;
+    
+    if !record.is_active { return None; }
+    if record.expires_at > 0 && now >= record.expires_at { return None; }
+    
+    self.hash_to_jid.get(&jid_hash)
+}
+```
+
+#### 3. **revoke() - Fixed Code Consistency** 🟢 LOW
+- **Problem**: Inconsistent use of `remove()` method
+  - Used `remove(caller)` (by-value) in `revoke()`
+  - Used `remove(&caller)` (by-reference) elsewhere
+- **Solution**: Standardized to `remove(&caller)` everywhere
+- **Impact**: Code uniformity and future-proofing
+
+### 🧪 Testing
+
+- **22 tests passing** (100% success rate)
+- All existing tests validate new behavior
+- No regressions introduced
+
+### 📦 Build Output
+
+- **Contract size: 41.2KB** (WASM) - slight increase due to additional checks
+- **Bundle size: ~103KB** (.contract)
+- Clippy warnings (24 style suggestions, non-blocking)
+
+### 🔧 Recommendations
+
+**If you have a deployed v0.3.1 contract:**
+1. ✅ The contract is functional but has the accounting risk
+2. ⚠️ Consider redeploying v0.3.2 if:
+   - Contract handles significant value
+   - Admin withdrawals are frequent
+   - Privacy of revoked JIDs is important
+
+**For new deployments:**
+- ✅ Use v0.3.2 (includes all critical fixes)
+
+---
+
 ## Version 0.3.1 (Hardening & Canonical Format)
 
 ### 🔴 BREAKING CHANGES

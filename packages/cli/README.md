@@ -14,9 +14,15 @@ CLI tool for deploying and managing JAMID smart contracts on Polkadot networks.
 
 ```bash
 # From root of jamid monorepo
-bun install
+npm install
 cd packages/cli
-bun run build
+npm run build
+
+# Optional: Link globally
+npm link
+
+# Then use from anywhere:
+jamid --version
 ```
 
 ## Usage
@@ -26,28 +32,32 @@ bun run build
 Deploy JAMID contract to a network:
 
 ```bash
-# Deploy to Paseo testnet
-bun run start deploy \
+# Deploy to Paseo testnet (if not linked globally)
+npm run start deploy -- \
   --endpoint wss://paseo.io \
   --suri "//Alice" \
   --chain-id paseo
 
-# Deploy with custom options
-bun run start deploy \
-  --endpoint wss://your-chain.io \
-  --suri "your mnemonic phrase here" \
-  --chain-id custom-chain \
-  --file path/to/jamid.contract
+# Or if linked globally:
+jamid deploy \
+  --endpoint wss://paseo.io \
+  --suri "//Alice" \
+  --chain-id paseo
+
+# Deploy with wallet file
+jamid deploy --wallet-file ./wallet.json
 
 # Dry run (test without deploying)
-bun run start deploy --dry-run
+jamid deploy --dry-run
 ```
 
 **Options:**
 - `-e, --endpoint <url>` - WebSocket endpoint (default: `wss://paseo.io`)
-- `-s, --suri <suri>` - Account seed/URI (default: `//Alice`)
+- `-s, --suri <suri>` - Account seed/URI (mnemonic or hex seed)
+- `-w, --wallet-file <path>` - Path to wallet JSON file (alternative to --suri)
 - `-c, --chain-id <id>` - Chain identifier (default: `paseo`)
 - `-f, --file <path>` - Path to .contract file
+- `-o, --output <path>` - Output path for config file (default: `./jamid.config.json`)
 - `--dry-run` - Simulate deployment without executing
 
 ### Get Contract Info
@@ -55,7 +65,13 @@ bun run start deploy --dry-run
 Query information about a deployed contract:
 
 ```bash
-bun run start info \
+# If not linked globally
+npm run start info -- \
+  --address 5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty \
+  --endpoint wss://paseo.io
+
+# Or if linked globally:
+jamid info \
   --address 5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty \
   --endpoint wss://paseo.io
 ```
@@ -66,23 +82,49 @@ bun run start info \
 
 ## Examples
 
+### Complete Workflow
+
+```bash
+# 1. Build the contract
+cd contracts/jamid
+cargo contract build --release
+
+# 2. Generate a wallet
+jamid wallet generate
+
+# 3. Request testnet tokens
+jamid wallet faucet -a <YOUR_ADDRESS>
+
+# 4. Check balance
+jamid wallet balance -a <YOUR_ADDRESS>
+
+# 5. Deploy with wallet file
+jamid deploy --wallet-file ./wallet.json
+
+# 6. Verify deployment
+jamid info -a <CONTRACT_ADDRESS>
+```
+
 ### Deploy to Paseo Testnet
 
 ```bash
-# 1. Build the contract first
-cd ../../contracts/jamid
-cargo contract build --release
+# Using development account
+jamid deploy \
+  --endpoint wss://paseo.io \
+  --suri "//Alice" \
+  --chain-id paseo
 
-# 2. Deploy
-cd ../../packages/cli
-bun run start deploy
+# Using custom mnemonic
+jamid deploy \
+  --suri "your twelve word mnemonic phrase here..." \
+  --chain-id paseo
 ```
 
 ### Deploy to Local Node
 
 ```bash
 # Assuming you have a local substrate node running
-bun run start deploy \
+jamid deploy \
   --endpoint ws://localhost:9944 \
   --suri "//Alice" \
   --chain-id local
@@ -91,8 +133,7 @@ bun run start deploy \
 ### Check Deployed Contract
 
 ```bash
-bun run start info \
-  --address 5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty
+jamid info --address 5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty
 ```
 
 ## Output Example
@@ -101,18 +142,19 @@ bun run start info \
 ```
 ╔═══════════════════════════════════════╗
 ║                                       ║
-║        JAMID CLI v0.3.1               ║
-║   JAM Identity Layer Contract Tool   ║
+║        JAMID CLI v0.3.2               ║
+║   JAM Identity Layer Contract Tool    ║
 ║                                       ║
 ╚═══════════════════════════════════════╝
 
 ✔ Connected to Paseo Testnet
-✔ Contract loaded: jamid v0.3.1
+✔ Contract loaded: jamid v0.3.2
 ✔ Genesis hash: 91b171bb158e2d38...
 ✔ Deployer: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
-  Balance: 100.0000 UNIT
-✔ Code uploaded successfully
+  Balance: 100.0000 PAS
+✔ Contract code uploaded. Code Hash: 0x1234...
 ✔ Contract instantiated successfully
+✔ Config saved to: ./jamid.config.json
 
 ✅ Deployment Complete!
 
@@ -120,24 +162,31 @@ Contract Details:
   Address: 5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty
   Chain: paseo
   Genesis Hash: 91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3
-  Version: 0.3.1
+  Version: 0.3.2
+
+Admin:
+  Address: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+  Public Key: 0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d
+
+Config File:
+  ./jamid.config.json
 
 Next Steps:
-  1. Save the contract address: 5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty
-  2. Update your SDK configuration
-  3. Test registration: jamid info -a 5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty
+  1. Share config file with your team/SDK
+  2. Test contract: jamid info -a 5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty
+  3. Integrate with SDK using the config file
 ```
 
 ### Contract Info
 ```
 ╔════════════════════════════════════════╗
-║     JAMID Contract Information        ║
+║     JAMID Contract Information         ║
 ╚════════════════════════════════════════╝
 
 Contract Details:
   Address: 5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty
   Chain: Paseo Testnet
-  Version: 0.3.1
+  Version: 0.3.2
 
 Configuration:
   Chain ID: paseo
@@ -146,7 +195,7 @@ Configuration:
 
 Statistics:
   Total JIDs: 42
-  Registration Fee: 1.0000 UNIT
+  Registration Fee: 1.0000 PAS
 
 Endpoint:
   wss://paseo.io
@@ -156,22 +205,47 @@ Endpoint:
 
 ```bash
 # Build
-bun run build
+npm run build
 
 # Watch mode
-bun run dev
+npm run dev
 
 # Type check
-bun run check-types
+npm run check-types
 
 # Lint
-bun run lint
+npm run lint
 ```
+
+### Version Management
+
+The CLI version is **centralized** in `package.json`. All references to the version throughout the codebase (banner, deploy output, info command, etc.) automatically read from `package.json` via `src/version.ts`.
+
+**To update the CLI version:**
+1. Change `version` in `package.json`
+2. Run `npm run build`
+3. Done! ✅
+
+**How it works:**
+```typescript
+// src/version.ts - reads from package.json
+export const VERSION = packageJson.version;
+
+// src/index.ts - uses centralized version
+import { VERSION } from "./version.js";
+console.log(`JAMID CLI v${VERSION}`);
+```
+
+This ensures version consistency across:
+- CLI banner (`jamid --version`)
+- Deployment output
+- Contract info display
+- Generated config files
 
 ## Requirements
 
 - Node.js >= 18
-- Bun package manager
+- npm package manager
 - Access to a Substrate node (local or remote)
 - Account with sufficient balance for deployment
 

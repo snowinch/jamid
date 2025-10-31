@@ -299,6 +299,21 @@ mod jamid {
         #[ink(message)]
         pub fn resolve_by_account(&self, account: AccountId) -> Option<String> {
             let jid_hash = self.account_to_jid.get(&account)?;
+            let record = self.jid_registry.get(&jid_hash)?;
+            
+            // Apply same policy as resolve(): check active and not expired
+            if !record.is_active {
+                return None;
+            }
+            
+            // Check expiration
+            if record.expires_at > 0 {
+                let now = self.env().block_timestamp();
+                if now >= record.expires_at {
+                    return None;
+                }
+            }
+            
             self.hash_to_jid.get(&jid_hash)
         }
 
@@ -435,7 +450,7 @@ mod jamid {
             self.jid_registry.insert(&jid_hash, &record);
 
             // Remove from account mapping (allows account to register new JID)
-            self.account_to_jid.remove(caller);
+            self.account_to_jid.remove(&caller);
 
             self.env().emit_event(JIDRevoked {
                 jid_hash,
@@ -515,12 +530,20 @@ mod jamid {
         pub fn withdraw(&mut self, amount: Balance) -> Result<()> {
             self.only_owner()?;
             
-            // Track withdrawal
-            self.total_fees_withdrawn = self.total_fees_withdrawn.saturating_add(amount);
+            // Check balance BEFORE transfer
+            if amount > self.env().balance() {
+                return Err(Error::TransferFailed);
+            }
             
+            // Transfer FIRST
             let owner = self.owner;
             self.env().transfer(owner, amount)
-                .map_err(|_| Error::TransferFailed)
+                .map_err(|_| Error::TransferFailed)?;
+            
+            // Update accounting AFTER successful transfer
+            self.total_fees_withdrawn = self.total_fees_withdrawn.saturating_add(amount);
+            
+            Ok(())
         }
         
         /// Set registration fee (admin only)

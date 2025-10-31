@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "fs";
 import { resolve, dirname } from "path";
 import chalk from "chalk";
 import ora from "ora";
+import { VERSION } from "../version.js";
 
 interface DeployOptions {
   endpoint: string;
@@ -81,7 +82,7 @@ export async function deployCommand(options: DeployOptions) {
     spinner.start("Loading contract file...");
     const contractPath = resolve(process.cwd(), options.file);
     const contractData = JSON.parse(readFileSync(contractPath, "utf8"));
-    spinner.succeed(`Contract loaded: ${chalk.cyan("jamid v0.3.1")}`);
+    spinner.succeed(`Contract loaded: ${chalk.cyan(`jamid v${VERSION}`)}`);
 
     // 4. Get genesis hash
     spinner.start("Getting chain genesis hash...");
@@ -185,7 +186,7 @@ export async function deployCommand(options: DeployOptions) {
     const configData = {
       contract: {
         address: contractAddress,
-        version: "0.3.1",
+        version: VERSION,
         deployedAt: new Date().toISOString(),
       },
       chain: {
@@ -215,7 +216,7 @@ export async function deployCommand(options: DeployOptions) {
     console.log(`  Address: ${chalk.cyan(contractAddress || "N/A")}`);
     console.log(`  Chain: ${chalk.cyan(options.chainId)}`);
     console.log(`  Genesis Hash: ${chalk.cyan(genesisHashClean)}`);
-    console.log(`  Version: ${chalk.cyan("0.3.1")}`);
+    console.log(`  Version: ${chalk.cyan(VERSION)}`);
 
     console.log(chalk.white("\nAdmin:"));
     console.log(`  Address: ${chalk.cyan(deployer.address)}`);

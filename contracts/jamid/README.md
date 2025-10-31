@@ -1,6 +1,6 @@
 # JAMID Smart Contract
 
-**Version: 0.3.1** | [Changelog](./CHANGELOG.md) | Production-Ready ✅
+**Version: 0.3.2** | [Changelog](./CHANGELOG.md) | Production-Ready ✅
 
 Production-ready ink! smart contract for managing JAM identities (JAMID) on Polkadot JAM.
 
@@ -111,6 +111,10 @@ Resolves a JID to get the full record.
 
 Reverse lookup: find JID by AccountId.
 
+**Returns:**
+- `Some(jid)` if account has an active, non-expired JID
+- `None` if account has no JID, or JID is revoked/expired
+
 ### `update_metadata(jid, metadata)`
 
 Updates metadata for a JID (owner only).
@@ -201,7 +205,14 @@ Checks if a JID is blacklisted.
 
 ### `withdraw(amount)`
 
-Withdraws collected fees (owner only). Withdrawal amounts are tracked for transparency.
+Withdraws collected fees (owner only). 
+
+**Process** (v0.3.2+):
+1. Verifies `amount <= contract balance`
+2. Executes transfer to owner
+3. Updates `total_fees_withdrawn` (only if transfer succeeds)
+
+**Note**: Atomic operation ensures accounting stays in sync with actual balance.
 
 ### `set_registration_fee(new_fee)`
 
@@ -220,9 +231,9 @@ cd contracts/jamid
 cargo contract build --release
 ```
 
-Output artifacts (v0.3.1):
-- `target/ink/jamid.contract` - Deployable contract bundle (**102KB**)
-- `target/ink/jamid.wasm` - Optimized WASM bytecode (**40KB**)
+Output artifacts (v0.3.2):
+- `target/ink/jamid.contract` - Deployable contract bundle (**~103KB**)
+- `target/ink/jamid.wasm` - Optimized WASM bytecode (**41.2KB**)
 - `target/ink/jamid.json` - Contract metadata/ABI
 
 ### Deploy
@@ -260,7 +271,7 @@ cd contracts/jamid
 cargo test
 ```
 
-**v0.3.1**: 22 tests passing (100% success rate)
+**v0.3.2**: 22 tests passing (100% success rate)
 
 Tests include:
 - Registration with payment and signature verification
@@ -315,8 +326,8 @@ In `lib.rs`:
 ```rust
 const MAX_JID_LENGTH: usize = 64;        // Maximum JID length
 const MIN_JID_LENGTH: usize = 3;         // Minimum JID length
-const MAX_METADATA_SIZE: usize = 2048;   // Max metadata: 2KB
-const REGISTRATION_FEE: Balance = 1_000_000_000_000; // Registration fee
+const MAX_METADATA_SIZE: usize = 256;    // Max metadata: 256 bytes (v0.3.0+)
+// Registration fee is now configurable via set_registration_fee()
 ```
 
 Adjust these before deployment based on your requirements.
@@ -566,7 +577,13 @@ All events use JID hashes for privacy:
 
 ## Version History
 
-### v0.3.1 - Hardening & Canonical Format (Current)
+### v0.3.2 - Critical Bug Fixes (Current)
+- 🔴 **Fixed withdraw() race condition** (accounting after transfer)
+- 🔒 **Fixed resolve_by_account() policy** (respects active/expired status)
+- 🔧 **Code consistency improvements** (standardized remove() calls)
+- 📦 **22 tests, 41.2KB WASM** (production-ready)
+
+### v0.3.1 - Hardening & Canonical Format
 - 🔴 **BREAKING**: Canonical message format (AccountId in hex)
 - 🔒 **Zero address transfer protection**
 - 🔒 **Enhanced JID validation** (block consecutive special chars)

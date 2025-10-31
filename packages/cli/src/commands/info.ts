@@ -4,6 +4,7 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 import chalk from "chalk";
 import ora from "ora";
+import { VERSION } from "../version.js";
 
 interface InfoOptions {
   address: string;
@@ -64,7 +65,7 @@ export async function infoCommand(options: InfoOptions) {
 
     // 5. Display information
     console.log(chalk.cyan("\n╔════════════════════════════════════════╗"));
-    console.log(chalk.cyan("║     JAMID Contract Information        ║"));
+    console.log(chalk.cyan("║     JAMID Contract Information         ║"));
     console.log(chalk.cyan("╚════════════════════════════════════════╝\n"));
 
     console.log(chalk.white("Contract Details:"));
@@ -72,7 +73,7 @@ export async function infoCommand(options: InfoOptions) {
     console.log(
       `  Chain: ${chalk.cyan((await api.rpc.system.chain()).toString())}`
     );
-    console.log(`  Version: ${chalk.cyan("0.3.1")}`);
+    console.log(`  Version: ${chalk.cyan(VERSION)}`);
 
     console.log(chalk.white("\nConfiguration:"));
     console.log(

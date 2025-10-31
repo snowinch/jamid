@@ -1,6 +1,6 @@
 {
   "name": "@jamid/cli",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "CLI tool for deploying and managing JAMID smart contracts",
   "private": true,
   "type": "module",

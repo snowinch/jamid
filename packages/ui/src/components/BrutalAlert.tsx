@@ -19,9 +19,9 @@ export interface BrutalAlertProps
 
 const variantStyles = {
     info: "bg-background text-foreground border-foreground",
-    success: "bg-green-500 text-white border-green-500",
-    warning: "bg-primary text-primary-foreground border-primary",
-    danger: "bg-primary text-primary-foreground border-primary",
+    success: "bg-green-500 text-white",
+    warning: "bg-primary text-primary-foreground",
+    danger: "bg-primary text-primary-foreground",
 };
 
 export const BrutalAlert = React.forwardRef<HTMLDivElement, BrutalAlertProps>(
@@ -31,7 +31,7 @@ export const BrutalAlert = React.forwardRef<HTMLDivElement, BrutalAlertProps>(
                 ref={ref}
                 role="alert"
                 className={cn(
-                    "border-2 brutal-shadow-sm p-4",
+                    "border brutal-shadow-sm p-4",
                     variantStyles[variant],
                     className
                 )}
@@ -40,8 +40,8 @@ export const BrutalAlert = React.forwardRef<HTMLDivElement, BrutalAlertProps>(
                 <div className="flex gap-3">
                     {icon && <div className="flex-shrink-0 font-black">{icon}</div>}
                     <div className="flex-1">
-                        {title && <h5 className="mb-1 font-black uppercase">{title}</h5>}
-                        <div className="text-sm font-bold">{children}</div>
+                        {title && <h5 className="mb-1 font-bold uppercase">{title}</h5>}
+                        <div className="text-sm">{children}</div>
                     </div>
                 </div>
             </div>

@@ -49,18 +49,18 @@ export const Hero = React.forwardRef<HTMLDivElement, HeroProps>(
                 )}
                 {...props}
             >
-                <div className="container mx-auto px-4 md:px-6">
-                    <div className="max-w-4xl mx-auto text-center space-y-6 md:space-y-8">
+                <div className="px-4 md:px-6">
+                    <div className="space-y-6 md:space-y-8">
                         <h1 className="text-4xl md:text-6xl lg:text-7xl font-black uppercase tracking-tighter leading-none">
                             {title}
                         </h1>
                         {subtitle && (
-                            <p className="text-lg md:text-xl lg:text-2xl font-bold max-w-2xl mx-auto">
+                            <p className="text-lg md:text-xl lg:text-2xl font-bold max-w-3xl">
                                 {subtitle}
                             </p>
                         )}
                         {actions && (
-                            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+                            <div className="flex flex-col sm:flex-row gap-4 pt-4">
                                 {actions}
                             </div>
                         )}

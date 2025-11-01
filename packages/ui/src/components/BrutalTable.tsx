@@ -84,10 +84,10 @@ export const BrutalTableRow = React.forwardRef<
 BrutalTableRow.displayName = "BrutalTableRow";
 
 export interface BrutalTableHeadProps
-    extends React.ThHTMLAttributes<HTMLTableCellElement> { }
+    extends React.ThHTMLAttributes<HTMLTableHeaderCellElement> { }
 
 export const BrutalTableHead = React.forwardRef<
-    HTMLTableCellElement,
+    HTMLTableHeaderCellElement,
     BrutalTableHeadProps
 >(({ className, children, ...props }, ref) => {
     return (
@@ -100,10 +100,10 @@ export const BrutalTableHead = React.forwardRef<
 BrutalTableHead.displayName = "BrutalTableHead";
 
 export interface BrutalTableCellProps
-    extends React.TdHTMLAttributes<HTMLTableCellElement> { }
+    extends React.TdHTMLAttributes<HTMLTableDataCellElement> { }
 
 export const BrutalTableCell = React.forwardRef<
-    HTMLTableCellElement,
+    HTMLTableDataCellElement,
     BrutalTableCellProps
 >(({ className, children, ...props }, ref) => {
     return (

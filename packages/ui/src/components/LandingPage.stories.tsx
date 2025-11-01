@@ -1,328 +1,295 @@
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { ThemeProvider } from "../utils/theme";
-import { Header, NavLink } from "./Header";
-import { Hero } from "./Hero";
-import { Footer } from "./Footer";
+import { Container } from "./Container";
+import { Section } from "./Section";
 import { BrutalButton } from "./BrutalButton";
-import { ThemeToggle } from "./ThemeToggle";
-import {
-    BrutalCard,
-    CardIcon,
-    CardHeading,
-    CardDescription,
-} from "./BrutalCard";
-import {
-    BrutalTable,
-    BrutalTableHeader,
-    BrutalTableBody,
-    BrutalTableRow,
-    BrutalTableHead,
-    BrutalTableCell,
-} from "./BrutalTable";
+import { H1, H2, H3, Paragraph, Blockquote } from "./Typography";
 import { CodeBlock } from "./CodeBlock";
-import { H2, H3, Paragraph, Blockquote } from "./Typography";
+import { ThemeToggle } from "./ThemeToggle";
+
+// Simple Header component for the story
+const SimpleHeader = () => (
+    <header className="sticky top-4 z-50 bg-background border-y border-border">
+        <div className="relative bg-background flex items-center justify-between px-6 py-4 md:px-12 lg:px-16">
+            <div className="flex items-center gap-3">
+                <div className="w-6 h-6 bg-magenta" />
+                <span className="font-display text-xl font-semibold">JAMID</span>
+            </div>
+
+            <nav className="hidden md:flex items-center gap-8 font-medium text-sm">
+                <a href="#vision" className="hover:text-magenta transition-colors">
+                    Vision
+                </a>
+                <a href="#why" className="hover:text-magenta transition-colors">
+                    Why
+                </a>
+                <a href="#governance" className="hover:text-magenta transition-colors">
+                    Governance
+                </a>
+                <a href="#overview" className="hover:text-magenta transition-colors">
+                    Overview
+                </a>
+                <a href="#roadmap" className="hover:text-magenta transition-colors">
+                    Roadmap
+                </a>
+            </nav>
+
+            <div className="flex items-center gap-4">
+                <ThemeToggle size="sm" />
+                <button className="px-4 py-2 border border-border hover:bg-magenta hover:text-white hover:border-magenta transition-colors text-sm font-medium">
+                    Try it Now
+                </button>
+            </div>
+        </div>
+    </header>
+);
+
+// Simple Footer component for the story
+const SimpleFooter = () => {
+    const links = [
+        { label: "Github", href: "https://github.com/snowinch" },
+        { label: "Subsquare", href: "https://www.subsquare.io/" },
+        { label: "Explorer", href: "https://polkadot.subscan.io/" },
+        { label: "X", href: "https://x.com/snowinch_io" },
+    ];
+
+    return (
+        <footer className="border-t border-border px-6 py-8 md:px-12 lg:px-16">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="text-sm font-medium">
+                    Built with ❤️ by{" "}
+                    <span className="font-semibold">SNOWINCH S.L.</span>
+                </div>
+
+                <div className="flex items-center gap-6 text-sm">
+                    {links.map((link) => (
+                        <a
+                            key={link.label}
+                            href={link.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-magenta transition-colors"
+                        >
+                            {link.label}
+                        </a>
+                    ))}
+                </div>
+            </div>
+
+            <div className="mt-6 text-xs text-gray-500 dark:text-gray-400 text-center md:text-left">
+                Contributor to the Polkadot OpenGov ecosystem
+            </div>
+        </footer>
+    );
+};
 
 const LandingPage = () => {
     return (
-        <ThemeProvider>
-            <div className="min-h-screen flex flex-col bg-background text-foreground">
-                {/* Header */}
-                <Header
-                    sticky
-                    logo={
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-primary border-2 border-current" />
-                            <span className="font-black text-xl uppercase">JAMID</span>
-                        </div>
-                    }
-                    navigation={
-                        <>
-                            <NavLink href="#vision">Vision</NavLink>
-                            <NavLink href="#why">Why</NavLink>
-                            <NavLink href="#governance">Governance</NavLink>
-                            <NavLink href="#overview">Overview</NavLink>
-                            <NavLink href="#roadmap">Roadmap</NavLink>
-                        </>
-                    }
-                    actions={
-                        <>
-                            <ThemeToggle size="sm" />
-                            <BrutalButton variant="primary" size="sm">
-                                Try it Now
-                            </BrutalButton>
-                        </>
-                    }
-                />
+        <div className="min-h-screen bg-background p-4">
+            <Container maxWidth="xl">
+                <SimpleHeader />
 
-                {/* Hero */}
-                <Hero
-                    title="The trustless identity layer for Polkadot JAM"
-                    subtitle="JAMID is a smart contract that defines a new open identity layer for JAM and Polkadot ecosystems. No custodians. No intermediaries—identities are stored on-chain, secured by cryptography, and interoperable across chains."
-                    actions={
-                        <>
+                {/* Hero Section */}
+                <Section noBorderTop>
+                    <div className="space-y-6">
+                        <H1>The trustless identity layer for Polkadot JAM</H1>
+                        <Paragraph size="lg">
+                            JAMID is a smart contract that defines a new open identity layer for
+                            JAM and Polkadot ecosystems. No custodians. No
+                            intermediaries—identities are stored on-chain, secured by
+                            cryptography, and interoperable across chains.
+                        </Paragraph>
+                        <div className="flex gap-4 pt-4">
                             <BrutalButton variant="primary" size="lg">
                                 Whitepaper
                             </BrutalButton>
                             <BrutalButton variant="outline" size="lg">
                                 GitHub
                             </BrutalButton>
-                        </>
-                    }
-                />
+                        </div>
+                    </div>
+                </Section>
 
                 {/* Vision Section */}
-                <section id="vision" className="py-16 md:py-24 border-b-4 border-current">
-                    <div className="container mx-auto px-4 md:px-6">
-                        <div className="max-w-4xl mx-auto space-y-8">
-                            <H2>Vision</H2>
-                            <Paragraph size="lg">
-                                JAMID defines a new standard for identity on Polkadot—one that
-                                belongs to everyone, not to a company.
-                            </Paragraph>
-                            <Paragraph>
-                                It provides a permanent, on-chain registry of human-readable JAM
-                                identities (JIDs), with full sovereignty and zero custodianship.
-                            </Paragraph>
-                        </div>
+                <Section id="vision" noBorderTop>
+                    <div className="space-y-6">
+                        <H2>Vision</H2>
+                        <Paragraph size="lg">
+                            JAMID defines a new standard for identity on Polkadot—one that
+                            belongs to everyone, not to a company. It provides a permanent,
+                            on-chain registry of human-readable JAM identities (JIDs), with full
+                            sovereignty and zero custodianship.
+                        </Paragraph>
                     </div>
-                </section>
+                </Section>
 
                 {/* Why It Matters Section */}
-                <section id="why" className="py-16 md:py-24 border-b-4 border-current">
-                    <div className="container mx-auto px-4 md:px-6">
-                        <div className="max-w-6xl mx-auto space-y-12">
-                            <H2 className="text-center">Why It Matters</H2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                <BrutalCard hoverable>
-                                    <CardIcon
-                                        icon={
-                                            <svg
-                                                width="24"
-                                                height="24"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                            >
-                                                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                                                <path d="M2 17l10 5 10-5" />
-                                                <path d="M2 12l10 5 10-5" />
-                                            </svg>
-                                        }
-                                    />
-                                    <CardHeading>No Custody</CardHeading>
-                                    <CardDescription>
-                                        Your key, your identity. No intermediaries.
-                                    </CardDescription>
-                                </BrutalCard>
-
-                                <BrutalCard hoverable>
-                                    <CardIcon
-                                        variant="primary"
-                                        icon={
-                                            <svg
-                                                width="24"
-                                                height="24"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                            >
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 6v6l4 2" />
-                                            </svg>
-                                        }
-                                    />
-                                    <CardHeading>On-Chain</CardHeading>
-                                    <CardDescription>
-                                        No intermediaries. Secured by cryptography.
-                                    </CardDescription>
-                                </BrutalCard>
-
-                                <BrutalCard hoverable>
-                                    <CardIcon
-                                        icon={
-                                            <svg
-                                                width="24"
-                                                height="24"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                            >
-                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                                                <circle cx="9" cy="7" r="4" />
-                                                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                                            </svg>
-                                        }
-                                    />
-                                    <CardHeading>Connected</CardHeading>
-                                    <CardDescription>
-                                        Works across JAM and parachains.
-                                    </CardDescription>
-                                </BrutalCard>
-
-                                <BrutalCard hoverable>
-                                    <CardIcon
-                                        variant="primary"
-                                        icon={
-                                            <svg
-                                                width="24"
-                                                height="24"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                            >
-                                                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                                            </svg>
-                                        }
-                                    />
-                                    <CardHeading>Governable</CardHeading>
-                                    <CardDescription>
-                                        Fees fund the ecosystem, not companies.
-                                    </CardDescription>
-                                </BrutalCard>
-                            </div>
+                <Section id="why" noBorderTop>
+                    <div className="space-y-12">
+                        <H2>Why It Matters</H2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                            {[
+                                {
+                                    icon: "🔐",
+                                    title: "Trustless",
+                                    description:
+                                        "No central authority. Pure cryptographic security.",
+                                },
+                                {
+                                    icon: "🌐",
+                                    title: "Interoperable",
+                                    description: "Works seamlessly across all Polkadot chains.",
+                                },
+                                {
+                                    icon: "👤",
+                                    title: "Self-Sovereign",
+                                    description: "You own your identity. Forever.",
+                                },
+                                {
+                                    icon: "🔓",
+                                    title: "Open Standard",
+                                    description: "Anyone can integrate. No gatekeepers.",
+                                },
+                            ].map((item, index) => (
+                                <div key={index} className="space-y-3">
+                                    <div className="text-4xl">{item.icon}</div>
+                                    <H3 className="text-xl">{item.title}</H3>
+                                    <Paragraph size="sm">{item.description}</Paragraph>
+                                </div>
+                            ))}
                         </div>
                     </div>
-                </section>
+                </Section>
 
                 {/* Governance Section */}
-                <section id="governance" className="py-16 md:py-24 bg-primary text-primary-foreground border-y-4 border-current">
-                    <div className="container mx-auto px-4 md:px-6">
-                        <div className="max-w-4xl mx-auto space-y-8 text-center">
-                            <H2>Governance</H2>
-                            <Paragraph size="lg">
-                                JAMID redirects all fees directly to the Polkadot Treasury.
-                            </Paragraph>
-                            <Paragraph>
-                                Its evolution is managed collectively by the OpenGov system.
-                                Snowinch contributed JAMID to the network and maintains it as an
-                                open public good.
-                            </Paragraph>
-                            <div className="pt-4">
-                                <BrutalButton variant="secondary" size="lg">
-                                    Treasury Proposal
-                                </BrutalButton>
-                            </div>
+                <Section id="governance" className="bg-magenta text-white" noBorderTop>
+                    <div className="space-y-6">
+                        <H2>Governance</H2>
+                        <Paragraph size="lg">
+                            JAMID redirects all fees directly to the Polkadot Treasury. No
+                            profit. No shareholders. Just pure public infrastructure.
+                        </Paragraph>
+                        <div className="flex gap-4 pt-4">
+                            <BrutalButton
+                                variant="outline"
+                                size="lg"
+                                className="bg-white text-magenta border-white hover:bg-white/90"
+                            >
+                                Learn More
+                            </BrutalButton>
                         </div>
                     </div>
-                </section>
+                </Section>
 
                 {/* Overview Section */}
-                <section id="overview" className="py-16 md:py-24 border-b-4 border-current">
-                    <div className="container mx-auto px-4 md:px-6">
-                        <div className="max-w-4xl mx-auto space-y-8">
-                            <H2>Overview</H2>
-                            <Paragraph>
-                                JAMID is built with ink! and designed to be verifiable,
-                                auditable, and immutable.
-                            </Paragraph>
-                            <ul className="space-y-3 list-none">
-                                <li className="flex items-start gap-3">
-                                    <span className="font-black text-primary">•</span>
-                                    <Paragraph>Written in Rust</Paragraph>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <span className="font-black text-primary">•</span>
-                                    <Paragraph>Deployed on JAM</Paragraph>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <span className="font-black text-primary">•</span>
-                                    <Paragraph>Source code 100% public</Paragraph>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <span className="font-black text-primary">•</span>
-                                    <Paragraph>Signatures verified with sr25519 / ed25519</Paragraph>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <span className="font-black text-primary">•</span>
-                                    <Paragraph>Immutability baked in (no admin key)</Paragraph>
-                                </li>
-                            </ul>
+                <Section id="overview" noBorderTop>
+                    <div className="space-y-8">
+                        <H2>Overview</H2>
+                        <Paragraph>
+                            JAMID is built with ink! and designed to be verifiable, auditable,
+                            and immutable.
+                        </Paragraph>
 
-                            <div className="pt-8">
-                                <BrutalButton variant="outline">Read the Specs</BrutalButton>
+                        <div className="space-y-6 pt-4">
+                            <div className="border-l-2 border-magenta pl-6 space-y-2">
+                                <H3 className="text-xl">Register</H3>
+                                <Paragraph size="sm">
+                                    Choose a unique JAM identity (JID) and register it on-chain.
+                                    First-come, first-served.
+                                </Paragraph>
+                            </div>
+
+                            <div className="border-l-2 border-magenta pl-6 space-y-2">
+                                <H3 className="text-xl">Resolve</H3>
+                                <Paragraph size="sm">
+                                    Any service can resolve a JID to its associated account. Fully
+                                    permissionless.
+                                </Paragraph>
+                            </div>
+
+                            <div className="border-l-2 border-magenta pl-6 space-y-2">
+                                <H3 className="text-xl">Transfer</H3>
+                                <Paragraph size="sm">
+                                    You can transfer your JID to another address. Full ownership
+                                    control.
+                                </Paragraph>
                             </div>
                         </div>
                     </div>
-                </section>
+                </Section>
 
                 {/* JAMID Format Section */}
-                <section className="py-16 md:py-24 bg-muted border-y-4 border-current">
-                    <div className="container mx-auto px-4 md:px-6">
-                        <div className="max-w-4xl mx-auto space-y-8">
-                            <H3>JAMID Format</H3>
-                            <Paragraph>
-                                Each JAMID follows a standardized format for universal
-                                compatibility:
-                            </Paragraph>
-                            <CodeBlock
-                                code="JAMID:{genesis_hash}:register:{jid}:{nonce}:{contract_address}"
-                                showCopy
-                            />
-                        </div>
+                <Section className="bg-muted" noBorderTop>
+                    <div className="space-y-6">
+                        <H3>JAMID Format</H3>
+                        <Paragraph>
+                            Each JAMID follows a standardized format for universal
+                            compatibility:
+                        </Paragraph>
+                        <CodeBlock
+                            code="JAMID:{genesis_hash}:register:{jid}:{nonce}:{contract_address}"
+                            language="text"
+                            showCopy
+                        />
                     </div>
-                </section>
+                </Section>
 
                 {/* Roadmap Section */}
-                <section id="roadmap" className="py-16 md:py-24 border-b-4 border-current">
-                    <div className="container mx-auto px-4 md:px-6">
-                        <div className="max-w-4xl mx-auto space-y-8">
-                            <H2>Roadmap</H2>
-                            <BrutalTable>
-                                <BrutalTableHeader>
-                                    <BrutalTableRow>
-                                        <BrutalTableHead>Phase</BrutalTableHead>
-                                        <BrutalTableHead>Description</BrutalTableHead>
-                                    </BrutalTableRow>
-                                </BrutalTableHeader>
-                                <BrutalTableBody>
-                                    <BrutalTableRow hoverable>
-                                        <BrutalTableCell>V0.9</BrutalTableCell>
-                                        <BrutalTableCell>Internal testing (Snowinch)</BrutalTableCell>
-                                    </BrutalTableRow>
-                                    <BrutalTableRow hoverable>
-                                        <BrutalTableCell>V1.0</BrutalTableCell>
-                                        <BrutalTableCell>
-                                            Public deployment (JAM / Treasury redirect)
-                                        </BrutalTableCell>
-                                    </BrutalTableRow>
-                                    <BrutalTableRow hoverable>
-                                        <BrutalTableCell>V1.1</BrutalTableCell>
-                                        <BrutalTableCell>
-                                            DAO recognition & community maintenance
-                                        </BrutalTableCell>
-                                    </BrutalTableRow>
-                                    <BrutalTableRow hoverable>
-                                        <BrutalTableCell>V2.0</BrutalTableCell>
-                                        <BrutalTableCell>
-                                            Burned ownership → full autonomy
-                                        </BrutalTableCell>
-                                    </BrutalTableRow>
-                                </BrutalTableBody>
-                            </BrutalTable>
+                <Section id="roadmap" noBorderTop>
+                    <div className="space-y-8">
+                        <H2>Roadmap</H2>
+
+                        <div className="space-y-6">
+                            {[
+                                {
+                                    phase: "Q1 2025",
+                                    milestone: "Smart Contract",
+                                    status: "✓ Complete",
+                                },
+                                {
+                                    phase: "Q2 2025",
+                                    milestone: "CLI Tool & SDK",
+                                    status: "In Progress",
+                                },
+                                {
+                                    phase: "Q3 2025",
+                                    milestone: "Web Interface",
+                                    status: "Planned",
+                                },
+                                {
+                                    phase: "Q4 2025",
+                                    milestone: "Ecosystem Integration",
+                                    status: "Planned",
+                                },
+                            ].map((item, index) => (
+                                <div
+                                    key={index}
+                                    className="grid grid-cols-3 gap-8 py-4 border-b border-border last:border-b-0"
+                                >
+                                    <div className="font-medium text-sm">{item.phase}</div>
+                                    <div className="font-display font-semibold">
+                                        {item.milestone}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                        {item.status}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
-                </section>
+                </Section>
 
                 {/* Quote Section */}
-                <section className="py-16 md:py-24 bg-primary text-primary-foreground border-y-4 border-current">
-                    <div className="container mx-auto px-4 md:px-6">
-                        <div className="max-w-4xl mx-auto">
-                            <Blockquote className="text-center text-2xl md:text-3xl border-0">
-                                "Built with ❤️ by SNOWINCH S.L. — Contributor to the Polkadot
-                                OpenGov ecosystem"
-                            </Blockquote>
-                        </div>
-                    </div>
-                </section>
+                <Section className="bg-foreground text-background" noBorderTop>
+                    <Blockquote className="border-0">
+                        "Built with ❤️ by SNOWINCH S.L. — Contributor to the Polkadot
+                        OpenGov ecosystem"
+                    </Blockquote>
+                </Section>
 
-                {/* Footer */}
-                <Footer />
-            </div>
-        </ThemeProvider>
+                <SimpleFooter />
+            </Container>
+        </div>
     );
 };
 
@@ -358,4 +325,3 @@ export const DarkTheme: Story = {
         ),
     ],
 };
-

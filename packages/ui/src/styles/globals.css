@@ -13,6 +13,7 @@
     --color-primary-foreground: 255 255 255;
     --color-secondary: 0 0 0;
     --color-accent: 255 215 0;
+    --color-smoke: 245 245 245;
   }
 
   .dark {
@@ -25,6 +26,7 @@
     --color-primary-foreground: 255 255 255;
     --color-secondary: 255 255 255;
     --color-accent: 255 215 0;
+    --color-smoke: 20 20 20;
   }
 
   *,
@@ -40,17 +42,19 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+    font-weight: 400;
   }
 
-  /* Neo-brutalist typography */
+  /* Elegant brutalist typography */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-black tracking-tight;
+    font-family: "Clash Display", -apple-system, BlinkMacSystemFont, sans-serif;
+    @apply font-medium tracking-tight;
   }
 
   strong {
-    @apply font-black;
+    @apply font-semibold;
   }
 }
 
@@ -74,32 +78,32 @@
 
   /* Neo-brutalist button base */
   .btn-brutal {
-    @apply inline-flex items-center justify-center font-black uppercase tracking-wide border-2 border-current transition-all;
+    @apply inline-flex items-center justify-center font-medium uppercase tracking-wide border border-current transition-all;
     @apply hover:translate-x-[2px] hover:translate-y-[2px];
   }
 
   /* Card base */
   .card-brutal {
-    @apply border-2 border-current brutal-shadow bg-background;
+    @apply border border-current brutal-shadow bg-background;
   }
 
   /* Input base */
   .input-brutal {
-    @apply w-full border-2 border-current bg-background px-4 py-3 font-mono text-sm;
+    @apply w-full border border-current bg-background px-4 py-3 font-mono text-sm;
     @apply focus:outline-none focus:ring-0 focus:translate-x-[2px] focus:translate-y-[2px];
   }
 
   /* Table brutal */
   .table-brutal {
-    @apply w-full border-2 border-current;
+    @apply w-full border border-current;
   }
 
   .table-brutal th {
-    @apply border-2 border-current bg-foreground text-background p-4 text-left font-black uppercase;
+    @apply border border-current bg-smoke text-foreground p-4 text-left font-medium uppercase;
   }
 
   .table-brutal td {
-    @apply border-2 border-current p-4;
+    @apply border border-current p-4;
   }
 }
 

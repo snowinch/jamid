@@ -9,7 +9,7 @@ export const H1 = React.forwardRef<HTMLHeadingElement, H1Props>(
             <h1
                 ref={ref}
                 className={cn(
-                    "text-4xl md:text-5xl lg:text-6xl font-black uppercase tracking-tighter leading-none",
+                    "text-4xl md:text-5xl lg:text-6xl font-display font-semibold tracking-tight leading-tight",
                     className
                 )}
                 {...props}
@@ -30,7 +30,7 @@ export const H2 = React.forwardRef<HTMLHeadingElement, H2Props>(
             <h2
                 ref={ref}
                 className={cn(
-                    "text-3xl md:text-4xl lg:text-5xl font-black uppercase tracking-tight leading-tight",
+                    "text-3xl md:text-4xl font-display font-semibold tracking-tight",
                     className
                 )}
                 {...props}
@@ -51,7 +51,7 @@ export const H3 = React.forwardRef<HTMLHeadingElement, H3Props>(
             <h3
                 ref={ref}
                 className={cn(
-                    "text-2xl md:text-3xl lg:text-4xl font-black uppercase tracking-tight leading-tight",
+                    "text-2xl md:text-3xl font-display font-semibold tracking-tight",
                     className
                 )}
                 {...props}
@@ -83,7 +83,7 @@ export const Paragraph = React.forwardRef<HTMLParagraphElement, ParagraphProps>(
         return (
             <p
                 ref={ref}
-                className={cn("font-medium leading-relaxed", sizeStyles[size], className)}
+                className={cn("leading-relaxed", sizeStyles[size], className)}
                 {...props}
             >
                 {children}
@@ -103,7 +103,7 @@ export const Blockquote = React.forwardRef<HTMLQuoteElement, BlockquoteProps>(
             <blockquote
                 ref={ref}
                 className={cn(
-                    "border-l-4 border-current pl-4 md:pl-6 italic font-bold text-lg md:text-xl",
+                    "border-l-2 border-primary pl-4 md:pl-6 font-display font-medium text-lg md:text-xl leading-relaxed",
                     className
                 )}
                 {...props}

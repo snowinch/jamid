@@ -70,5 +70,12 @@ export type {
   BlockquoteProps,
 } from "./components/Typography";
 
+// Layout Components
+export { Container } from "./components/Container";
+export type { ContainerProps } from "./components/Container";
+
+export { Section } from "./components/Section";
+export type { SectionProps } from "./components/Section";
+
 // Utils
 export { cn } from "./utils/cn";

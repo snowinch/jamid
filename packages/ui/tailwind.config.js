@@ -7,22 +7,29 @@ module.exports = {
       colors: {
         background: "rgb(var(--color-background) / <alpha-value>)",
         foreground: "rgb(var(--color-foreground) / <alpha-value>)",
+        smoke: "rgb(var(--color-smoke) / <alpha-value>)",
         muted: "rgb(var(--color-muted) / <alpha-value>)",
+        border: "rgb(var(--color-border) / <alpha-value>)",
         primary: {
           DEFAULT: "rgb(var(--color-primary) / <alpha-value>)",
           foreground: "rgb(var(--color-primary-foreground) / <alpha-value>)",
         },
         secondary: "rgb(var(--color-secondary) / <alpha-value>)",
         accent: "rgb(var(--color-accent) / <alpha-value>)",
+        magenta: "#FF007F",
       },
       fontFamily: {
         sans: [
+          "Inter",
           "-apple-system",
           "BlinkMacSystemFont",
-          '"Segoe UI"',
-          "Roboto",
-          '"Helvetica Neue"',
-          "Arial",
+          "system-ui",
+          "sans-serif",
+        ],
+        display: [
+          '"Clash Display"',
+          "-apple-system",
+          "BlinkMacSystemFont",
           "sans-serif",
         ],
         mono: [

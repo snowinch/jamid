@@ -19,18 +19,18 @@ export interface BrutalButtonProps
 
 const variantStyles = {
     primary:
-        "bg-primary text-primary-foreground border-primary brutal-shadow hover:shadow-none",
+        "bg-magenta text-white border-magenta hover:bg-opacity-90",
     secondary:
-        "bg-foreground text-background border-current brutal-shadow hover:shadow-none",
+        "bg-foreground text-background border-foreground hover:bg-opacity-90",
     outline:
-        "bg-background text-foreground border-current brutal-shadow hover:shadow-none",
+        "bg-transparent text-foreground border-foreground hover:bg-foreground hover:text-background",
     ghost: "bg-transparent text-foreground border-transparent hover:bg-muted",
 };
 
 const sizeStyles = {
-    sm: "px-4 py-2 text-sm",
-    md: "px-6 py-3 text-base",
-    lg: "px-8 py-4 text-lg",
+    sm: "px-4 py-2 text-sm font-medium",
+    md: "px-6 py-3 text-sm font-medium",
+    lg: "px-8 py-3 text-sm font-medium",
 };
 
 export const BrutalButton = React.forwardRef<
@@ -54,7 +54,7 @@ export const BrutalButton = React.forwardRef<
                 ref={ref}
                 disabled={disabled}
                 className={cn(
-                    "btn-brutal",
+                    "btn-brutal shadow-brutal-sm",
                     variantStyles[variant],
                     sizeStyles[size],
                     fullWidth && "w-full",

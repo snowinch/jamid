@@ -33,7 +33,7 @@ export const BrutalBadge = React.forwardRef<HTMLSpanElement, BrutalBadgeProps>(
             <span
                 ref={ref}
                 className={cn(
-                    "inline-flex items-center font-black uppercase border-2",
+                    "inline-flex items-center font-medium uppercase shadow-brutal-sm",
                     variantStyles[variant],
                     sizeStyles[size],
                     className

@@ -52,8 +52,9 @@
         "title": "Governed by the Polkadot Treasury",
         "text": "All protocol fees collected by JAMID are redirected to the Polkadot Treasury. Its evolution is managed collectively through the OpenGov system. Snowinch contributed JAMID as an open public good and continues to maintain it under Treasury oversight.",
         "button": {
-            "label": "Treasury Proposal",
-            "url": "#proposal"
+            "label": "Treasury Proposal (Coming Soon)",
+            "url": "#proposal",
+            "disabled": true
         }
     },
     "overview": {

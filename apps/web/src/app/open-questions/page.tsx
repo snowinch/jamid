@@ -1,14 +1,25 @@
+import { Metadata } from "next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { QuestionCard } from "@/components/QuestionCard";
 import { getOpenQuestions } from "@/lib/open-questions";
 import { getContent } from "@/lib/db";
+import { SITE_URL } from "@/lib/constants";
 
-export const metadata = {
-    title: "Open Questions - JAMID",
-    description:
-        "Community discussion on open questions and future directions for JAMID - Join the conversation",
-};
+export async function generateMetadata(): Promise<Metadata> {
+    const data = await getOpenQuestions();
+
+    return {
+        title: "Open Questions",
+        description: `${data.title} - ${data.subtitle} Explore ${data.questions.length} open topics and join the discussion on Discord.`,
+        openGraph: {
+            title: data.title,
+            description: data.intro,
+            url: `${SITE_URL}/open-questions`,
+            type: "website",
+        },
+    };
+}
 
 export default async function OpenQuestionsPage() {
     const data = await getOpenQuestions();

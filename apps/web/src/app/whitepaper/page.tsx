@@ -1,14 +1,25 @@
+import { Metadata } from "next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { WhitepaperSection } from "@/components/WhitepaperSection";
 import { getWhitepaper } from "@/lib/whitepaper";
 import { getContent } from "@/lib/db";
+import { SITE_URL } from "@/lib/constants";
 
-export const metadata = {
-    title: "Whitepaper - JAMID",
-    description:
-        "Technical whitepaper for JAMID - The trustless identity layer for Polkadot JAM",
-};
+export async function generateMetadata(): Promise<Metadata> {
+    const whitepaper = await getWhitepaper();
+
+    return {
+        title: "Whitepaper",
+        description: `${whitepaper.title} - Technical documentation covering ${whitepaper.sections.length} key topics including motivation, design, architecture, security, and governance.`,
+        openGraph: {
+            title: whitepaper.title,
+            description: "Technical whitepaper for JAMID - The trustless identity layer for Polkadot JAM",
+            url: `${SITE_URL}/whitepaper`,
+            type: "article",
+        },
+    };
+}
 
 export default async function WhitepaperPage() {
     const whitepaper = await getWhitepaper();

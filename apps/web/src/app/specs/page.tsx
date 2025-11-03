@@ -1,14 +1,25 @@
+import { Metadata } from "next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { SpecsSection } from "@/components/SpecsSection";
 import { getSpecs } from "@/lib/specs";
 import { getContent } from "@/lib/db";
+import { SITE_URL } from "@/lib/constants";
 
-export const metadata = {
-    title: "Technical Specifications - JAMID",
-    description:
-        "Detailed technical specifications for JAMID smart contract - storage, security, and implementation details",
-};
+export async function generateMetadata(): Promise<Metadata> {
+    const specs = await getSpecs();
+
+    return {
+        title: "Technical Specifications",
+        description: `${specs.title} - Detailed technical specifications covering ${specs.sections.length} topics including data model, storage structure, security layers, and implementation details with code examples.`,
+        openGraph: {
+            title: specs.title,
+            description: "Detailed technical specifications for JAMID smart contract - storage, security, and implementation details",
+            url: `${SITE_URL}/specs`,
+            type: "article",
+        },
+    };
+}
 
 export default async function SpecsPage() {
     const specs = await getSpecs();

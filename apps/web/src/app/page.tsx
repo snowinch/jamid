@@ -1,3 +1,4 @@
+import { Metadata } from "next";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { Vision } from "@/components/Vision";
@@ -7,6 +8,22 @@ import { Overview } from "@/components/Overview";
 import { Roadmap } from "@/components/Roadmap";
 import { Footer } from "@/components/Footer";
 import { getContent } from "@/lib/db";
+import { SITE_URL } from "@/lib/constants";
+
+export async function generateMetadata(): Promise<Metadata> {
+    const content = await getContent();
+
+    return {
+        title: content.hero.title,
+        description: content.hero.subtitle,
+        openGraph: {
+            title: content.hero.title,
+            description: content.hero.subtitle,
+            url: SITE_URL,
+            type: "website",
+        },
+    };
+}
 
 export default async function Home() {
     const content = await getContent();

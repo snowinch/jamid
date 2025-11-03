@@ -16,6 +16,20 @@ export const metadata: Metadata = {
     keywords: ['JAMID', 'JAM', 'Polkadot', 'identity', 'blockchain', 'web3', 'decentralized', 'on-chain', 'trustless', 'OpenGov', 'DAO', 'ink', 'Rust'],
     authors: [{ name: 'Snowinch S.L.' }],
     creator: 'Snowinch S.L.',
+    icons: {
+        icon: [
+            { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+            { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+            { url: '/favicon.ico', sizes: 'any' }
+        ],
+        apple: [
+            { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }
+        ],
+        other: [
+            { rel: 'android-chrome-192x192', url: '/android-chrome-192x192.png' },
+            { rel: 'android-chrome-512x512', url: '/android-chrome-512x512.png' }
+        ]
+    },
     openGraph: {
         type: 'website',
         locale: 'en_US',
@@ -23,17 +37,27 @@ export const metadata: Metadata = {
         siteName: SITE_NAME,
         title: `${SITE_NAME} - The trustless identity layer for Polkadot JAM`,
         description: SITE_DESCRIPTION,
+        images: [
+            {
+                url: '/android-chrome-512x512.png',
+                width: 512,
+                height: 512,
+                alt: `${SITE_NAME} Logo`
+            }
+        ]
     },
     twitter: {
         card: 'summary_large_image',
         title: `${SITE_NAME} - The trustless identity layer for Polkadot JAM`,
         description: SITE_DESCRIPTION,
         creator: TWITTER_HANDLE,
+        images: ['/android-chrome-512x512.png']
     },
     robots: {
         index: true,
         follow: true,
     },
+    manifest: '/site.webmanifest',
 }
 
 export default function RootLayout({

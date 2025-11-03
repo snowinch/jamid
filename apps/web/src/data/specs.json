@@ -1,0 +1,187 @@
+{
+    "title": "JAMID Technical Specifications",
+    "sections": [
+        {
+            "id": "overview",
+            "number": "1",
+            "title": "Overview",
+            "content": "JAMID is written in Rust using ink!, and defines a self-contained smart contract for on-chain identity in the Polkadot JAM ecosystem. Its purpose is to provide a trust-minimized, cryptographically verifiable, and DAO-ready registry for JAM Identities (JIDs)."
+        },
+        {
+            "id": "data-model",
+            "number": "2",
+            "title": "Core Data Model",
+            "code": {
+                "language": "rust",
+                "content": "pub struct JIDRecord {\n    pub owner: AccountId,\n    pub registered_at: Timestamp,\n    pub updated_at: Timestamp,\n    pub metadata: Vec<u8>,\n    pub is_active: bool,\n    pub expires_at: Timestamp,\n}"
+            },
+            "content": "Each JID is represented by a record stored on-chain. The design keeps the record minimal and efficient, optimized for trustless environments:",
+            "list": [
+                "Fixed-size hash keys instead of variable strings → better storage performance.",
+                "Metadata limited to 256 bytes to avoid DoS or bloat (larger data via IPFS pointer).",
+                "Revocation & expiration natively supported for lifecycle management."
+            ]
+        },
+        {
+            "id": "storage",
+            "number": "3",
+            "title": "Storage Structure",
+            "code": {
+                "language": "rust",
+                "content": "#[ink(storage)]\npub struct Jamid {\n    jid_registry: Mapping<Hash, JIDRecord>,\n    hash_to_jid: Mapping<Hash, String>,\n    account_to_jid: Mapping<AccountId, Hash>,\n    nonces: Mapping<(AccountId, u8), u64>,\n    owner: AccountId,\n    paused: bool,\n    blacklist: Mapping<Hash, bool>,\n    total_jids: u64,\n    registration_fee: Balance,\n    total_fees_collected: Balance,\n    total_fees_withdrawn: Balance,\n    chain_id: String,\n    genesis_hash: Hash,\n}"
+            },
+            "footer": "Why this design:",
+            "list": [
+                "Mapping-based storage ensures O(1) lookup and avoids dynamic iteration.",
+                "Hash-based privacy hides JIDs in events and logs.",
+                "Nonce namespacing ensures replay protection per action (Register/Transfer).",
+                "Genesis hash binding prevents cross-chain replay attacks."
+            ]
+        },
+        {
+            "id": "security",
+            "number": "4",
+            "title": "Security Layers",
+            "content": "JAMID implements multiple layers of protection:",
+            "table": [
+                {
+                    "layer": "Nonce System",
+                    "description": "Prevents transaction replay by maintaining per-account nonces."
+                },
+                {
+                    "layer": "Genesis Hash Binding",
+                    "description": "Guarantees signatures are valid only on the intended chain."
+                },
+                {
+                    "layer": "Pause Mechanism",
+                    "description": "Allows safe contract halting during migration or audits."
+                },
+                {
+                    "layer": "Blacklist System",
+                    "description": "Protects against abusive registrations (squatting, offensive names)."
+                },
+                {
+                    "layer": "Length & Character Rules",
+                    "description": "Prevent malformed JIDs and parsing vulnerabilities."
+                }
+            ]
+        },
+        {
+            "id": "signature",
+            "number": "5",
+            "title": "Signature Verification",
+            "code": {
+                "language": "rust",
+                "content": "fn verify_signature(&self, account: &AccountId, jid: &str, nonce: u64, signature: &[u8]) -> Result<()>"
+            },
+            "content": "Signatures follow this format:",
+            "code2": {
+                "language": "text",
+                "content": "<JAMID>:{genesis_hash}:register:{jid}:{nonce}:{contract_address}"
+            },
+            "footer": "and include:",
+            "list": [
+                "1 byte → signature type (0x00 = sr25519, 0x01 = ed25519)",
+                "64 bytes → signature",
+                "32 bytes → public key"
+            ],
+            "conclusion": "This model ensures deterministic verification and compatibility across wallets.\n\nDesign Choice: JAMID doesn't trust off-chain verifiers. All proofs are verified directly in the contract through sr25519_verify or future JAM runtime primitives."
+        },
+        {
+            "id": "registration",
+            "number": "6",
+            "title": "Registration Flow",
+            "code": {
+                "language": "rust",
+                "content": "#[ink(message, payable)]\npub fn register(&mut self, jid: String, signature: Vec<u8>, nonce: u64, expires_at: Timestamp)"
+            },
+            "content": "Steps:",
+            "list": [
+                "Validate format, blacklist, and uniqueness.",
+                "Check sufficient payment (registration_fee).",
+                "Verify nonce and signature.",
+                "Record identity → emit event."
+            ],
+            "footer": "Why this order? Cheaper checks first reduce gas cost for failed transactions. Expensive cryptographic checks run only if all early conditions pass."
+        },
+        {
+            "id": "events",
+            "number": "7",
+            "title": "Events & Transparency",
+            "code": {
+                "language": "rust",
+                "content": "#[ink(event)]\npub struct JIDRegistered {\n    #[ink(topic)]\n    jid_hash: Hash,\n    owner: AccountId,\n    registered_at: Timestamp,\n}"
+            },
+            "content": "Events are emitted for every change, but only hashed JIDs are exposed publicly — preserving privacy while maintaining transparency."
+        },
+        {
+            "id": "governance-fees",
+            "number": "8",
+            "title": "Governance Hooks & Fees",
+            "content": "All fees are accounted internally via:",
+            "code": {
+                "language": "rust",
+                "content": "registration_fee: Balance,\ntotal_fees_collected: Balance,\ntotal_fees_withdrawn: Balance,"
+            },
+            "footer": "In future versions, withdraw() will be removed and replaced by direct Treasury redirection, so all fees automatically flow to the Polkadot Treasury DAO."
+        },
+        {
+            "id": "admin",
+            "number": "9",
+            "title": "Admin Functions",
+            "content": "Temporarily included for testnet and migration control:",
+            "list": [
+                "set_paused()",
+                "blacklist_jid() / unblacklist_jid()",
+                "set_registration_fee()",
+                "withdraw()",
+                "transfer_ownership()"
+            ],
+            "footer": "These will be burned in v2.0 once governance integration is finalized."
+        },
+        {
+            "id": "testing",
+            "number": "10",
+            "title": "Testing & Validation",
+            "content": "The contract includes over 35 ink! tests covering:",
+            "list": [
+                "Registration, revocation, and resolution",
+                "Fee accounting",
+                "Blacklist and metadata validation",
+                "Nonce overflow and replay edge cases",
+                "Case normalization",
+                "Paused state enforcement"
+            ],
+            "footer": "Each test uses ink! test environment mocks for reproducibility."
+        },
+        {
+            "id": "future",
+            "number": "11",
+            "title": "Future Changes",
+            "table": [
+                {
+                    "version": "v1.1",
+                    "feature": "Treasury fee redirection"
+                },
+                {
+                    "version": "v1.2",
+                    "feature": "DAO integration via OpenGov"
+                },
+                {
+                    "version": "v2.0",
+                    "feature": "Burned admin, full autonomy"
+                },
+                {
+                    "version": "v2.1",
+                    "feature": "Multi-chain JID resolution via JAM messaging"
+                }
+            ]
+        },
+        {
+            "id": "conclusion",
+            "number": "12",
+            "title": "Conclusion",
+            "content": "JAMID is designed for security, transparency, and neutrality. It minimizes trust assumptions, enforces chain integrity, and paves the way for a community-owned identity standard within JAM and Polkadot."
+        }
+    ]
+}

@@ -1,0 +1,173 @@
+{
+    "title": "Open Questions & Community Discussion",
+    "subtitle": "Stato dell'arte, dubbi aperti e direzioni possibili. Partecipa su Discord per definire lo standard insieme.",
+    "intro": "JAMID is moving fast. Below are the topics we consider open or under active exploration. We're not collecting answers here—join the discussion on Discord to shape decisions with the core team and the community.",
+    "questions": [
+        {
+            "id": "signature-verification",
+            "number": "1",
+            "title": "Signature Verification on JAM",
+            "question": "What's the canonical path for on-chain sr25519/ed25519 verification across JAM runtimes (native primitives vs chain extensions)?",
+            "whyItMatters": "Interop and wallet UX depend on a stable, cross-runtime signing contract.",
+            "section": "We're exploring:",
+            "points": [
+                "Standard message schema and canonical encodings",
+                "Fallback strategy when a primitive isn't available",
+                "Wallet prompts and UX consistency"
+            ]
+        },
+        {
+            "id": "message-schema",
+            "number": "2",
+            "title": "Canonical Message Schema",
+            "question": "Finalize the message format for register/transfer (fields, ordering, hex encoding) as a stable, versioned spec.",
+            "whyItMatters": "Deterministic verification and compatibility across SDKs/wallets."
+        },
+        {
+            "id": "fees-value-flow",
+            "number": "3",
+            "title": "Fees & Value Flow",
+            "question": "Where should registration fees flow long-term—protocol treasury, Polkadot Treasury, or a split?",
+            "whyItMatters": "Aligning incentives while keeping JAMID neutral.",
+            "section": "Options:",
+            "points": [
+                "100% to Polkadot Treasury (OpenGov)",
+                "Mixed split (DAO-controlled)",
+                "Protocol-owned revenue redirected via governance"
+            ]
+        },
+        {
+            "id": "admin-to-dao",
+            "number": "4",
+            "title": "Admin Powers → DAO",
+            "question": "Sunset plan for admin functions (pause, blacklist, fee) and migration to DAO controls.",
+            "whyItMatters": "Credible neutrality and trust minimization.",
+            "section": "Ideas:",
+            "points": [
+                "Timelocked actions + on-chain proposals",
+                "Emergency pause criteria & scope",
+                "\"Burn\" schedule after DAO integration"
+            ]
+        },
+        {
+            "id": "namespace-policy",
+            "number": "5",
+            "title": "Namespace Policy & Dispute Process",
+            "question": "Rules for reserved names (brands, protocol names), fair use, and conflicts.",
+            "whyItMatters": "Prevent abuse without centralizing control.",
+            "section": "Tracks:",
+            "points": [
+                "Commit-reveal or auction for high-demand names",
+                "Trademark dispute flow governed by DAO",
+                "Transparent blacklist criteria"
+            ]
+        },
+        {
+            "id": "anti-squatting",
+            "number": "6",
+            "title": "Anti-Squatting Mechanisms",
+            "question": "Which mechanism best balances openness and fairness?",
+            "section": "Candidates:",
+            "points": [
+                "Dutch auctions / Vickrey auctions",
+                "Staked reservations with decay",
+                "Throttle per account / per block"
+            ]
+        },
+        {
+            "id": "recovery",
+            "number": "7",
+            "title": "Recovery & Key Rotation",
+            "question": "Should JAMID provide a native, opt-in recovery path (social recovery, time-locked transfer)?",
+            "whyItMatters": "Trade-off: Usability vs purity of self-custody."
+        },
+        {
+            "id": "metadata-strategy",
+            "number": "8",
+            "title": "Metadata Strategy",
+            "question": "Best practice for metadata (currently 256B cap): pointer format (IPFS/HTTPS), integrity hash, versioning.",
+            "whyItMatters": "Goal: Deterministic, verifiable, and minimal on-chain footprint."
+        },
+        {
+            "id": "privacy",
+            "number": "9",
+            "title": "Privacy Posture",
+            "question": "Default privacy guarantees (hashed JIDs in events) vs optional disclosure features.",
+            "whyItMatters": "Open point: Opt-in proofs for off-chain identity claims."
+        },
+        {
+            "id": "multi-chain",
+            "number": "10",
+            "title": "Multi-Chain Resolution",
+            "question": "How should cross-chain resolution work across JAM/Polkadot ecosystems?",
+            "section": "Paths:",
+            "points": [
+                "Standardized \"genesis_hash + chain_id\" binding",
+                "Message bridge standard for lookups"
+            ]
+        },
+        {
+            "id": "sdks-wallet-ux",
+            "number": "11",
+            "title": "SDKs & Wallet UX",
+            "question": "Standard prompts, message previews, error semantics, and dev ergonomics.",
+            "whyItMatters": "Goal: One mental model, many clients."
+        },
+        {
+            "id": "rate-limits",
+            "number": "12",
+            "title": "Rate-Limits & DoS Surface",
+            "question": "What's the minimal, predictable set of guardrails beyond pricing?",
+            "section": "Ideas:",
+            "points": [
+                "Adaptive fees",
+                "Per-account rate caps",
+                "Mempool guidance"
+            ]
+        },
+        {
+            "id": "migration",
+            "number": "13",
+            "title": "Testnet → Mainnet Migration",
+            "question": "Smooth upgrade path for early JIDs (mapping, proofs, cut-over semantics).",
+            "whyItMatters": "We'll define: Migration blocks, grace periods, replay safety."
+        },
+        {
+            "id": "upgradability",
+            "number": "14",
+            "title": "Upgradability & Versioning",
+            "question": "Versioning strategy (data schema, message schema) and backwards-compat.",
+            "whyItMatters": "Direction: Semantic versions + feature flags + capability bits."
+        },
+        {
+            "id": "composability",
+            "number": "15",
+            "title": "Composability (ENS/Other Systems)",
+            "question": "Bridges or compatibility layers with other name/identity systems.",
+            "whyItMatters": "Why it matters: Network effects and developer adoption."
+        },
+        {
+            "id": "compliance",
+            "number": "16",
+            "title": "Compliance & Jurisdiction",
+            "question": "Guidance for PII, takedowns, and jurisdictional conflicts while staying credibly neutral.",
+            "whyItMatters": "Principle: Minimize on-chain PII; push sensitive data off-chain with integrity proofs."
+        }
+    ],
+    "contribute": {
+        "title": "How to Contribute",
+        "intro": "We discuss proposals, risks, and trade-offs in public. If you care about identity, neutrality, and UX, we want you in the loop.",
+        "ways": [
+            "Join our Discord → Real-time discussions, RFCs, votes, and office hours.",
+            "Propose an RFC → Bring a succinct problem statement, alternatives, and rationale.",
+            "Build with us → Try the SDKs, file issues, contribute examples."
+        ],
+        "cta": {
+            "text": "Let's design JAMID as a public good. Your feedback and code reviews directly shape the standard.",
+            "button": {
+                "label": "Join the conversation on Discord",
+                "url": "https://discord.gg/your-discord-link"
+            }
+        }
+    }
+}

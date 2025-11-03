@@ -1,0 +1,117 @@
+{
+    "hero": {
+        "title": "The trustless identity layer for Polkadot JAM",
+        "subtitle": "JAMID defines a new open standard for identity — one that belongs to the network, not to a company. Identities are stored on-chain, secured by cryptography, and governed collectively by the community.",
+        "buttons": [
+            {
+                "label": "Whitepaper",
+                "url": "/whitepaper",
+                "variant": "primary"
+            },
+            {
+                "label": "GitHub",
+                "url": "https://github.com",
+                "variant": "secondary"
+            }
+        ]
+    },
+    "vision": {
+        "title": "A self-sovereign identity for the JAM era",
+        "text": "JAMID is a smart contract that defines identity as a public good. It allows anyone to register a verifiable JAM Identity (JID) directly on-chain, without intermediaries or custodians. Ownership is proven through cryptography — not administration."
+    },
+    "whyItMatters": {
+        "title": "Why it matters",
+        "items": [
+            {
+                "id": "1",
+                "title": "No Custody",
+                "description": "Your key, your identity.",
+                "icon": "🔑"
+            },
+            {
+                "id": "2",
+                "title": "On-Chain",
+                "description": "No intermediaries or off-chain dependencies.",
+                "icon": "⛓️"
+            },
+            {
+                "id": "3",
+                "title": "Connected",
+                "description": "Works across JAM and all Polkadot parachains.",
+                "icon": "🔗"
+            },
+            {
+                "id": "4",
+                "title": "Governable",
+                "description": "Fees fund the ecosystem, not private entities.",
+                "icon": "🏛️"
+            }
+        ]
+    },
+    "governance": {
+        "title": "Governed by the Polkadot Treasury",
+        "text": "All protocol fees collected by JAMID are redirected to the Polkadot Treasury. Its evolution is managed collectively through the OpenGov system. Snowinch contributed JAMID as an open public good and continues to maintain it under Treasury oversight.",
+        "button": {
+            "label": "Treasury Proposal",
+            "url": "#proposal"
+        }
+    },
+    "overview": {
+        "title": "Overview",
+        "text": "JAMID is written in Rust and built with ink! It is verifiable, auditable, and immutable by design. Deployed on JAM testnet and designed for open contribution.",
+        "specs": [
+            "Written in Rust",
+            "Deployed on JAM",
+            "100% public source code",
+            "Signatures verified via sr25519 / ed25519",
+            "No admin key or owner control"
+        ],
+        "button": {
+            "label": "Read the Specs",
+            "url": "/specs"
+        }
+    },
+    "roadmap": {
+        "title": "Roadmap",
+        "phases": [
+            {
+                "version": "V0.9",
+                "description": "Internal testing (Snowinch)"
+            },
+            {
+                "version": "V1.0",
+                "description": "Public deployment (JAM + Treasury redirect)"
+            },
+            {
+                "version": "V1.1",
+                "description": "DAO recognition and community maintenance"
+            },
+            {
+                "version": "V2.0",
+                "description": "Ownership burned → full autonomy"
+            }
+        ]
+    },
+    "footer": {
+        "text": "Built with ❤️ by Snowinch S.L.",
+        "subtext": "Contributor to the Polkadot OpenGov ecosystem.",
+        "links": [
+            {
+                "label": "GitHub",
+                "url": "https://github.com"
+            },
+            {
+                "label": "Subsquare",
+                "url": "https://subsquare.io"
+            },
+            {
+                "label": "Explorer",
+                "url": "#explorer"
+            },
+            {
+                "label": "X",
+                "url": "https://x.com"
+            }
+        ]
+    }
+}
